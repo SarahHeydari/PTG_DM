@@ -1,9 +1,1149 @@
 {% extends "frontend/base.html" %}
-{% block title %}پروفایل ادمین{% endblock %}
+{% load static %}
+
 {% block content %}
-<div class="container py-4" style="color:#fff;">
-  <h3 class="fw-bold">پروفایل ادمین</h3>
-  <p style="opacity:.75;">این صفحه بعداً فعال می‌شود (مدیریت کل سامانه)</p>
-  <a class="btn btn-warning fw-bold" href="/ui/">بازگشت به پنل</a>
+<style>
+  :root{
+    --brand-navy:#0B1020;
+    --brand-navy-2:#111A33;
+    --brand-yellow:#F6C343;
+    --brand-yellow-2:#FFD56A;
+
+    /* surfaces (NOT white) */
+    --surface: rgba(255,255,255,.07);
+    --surface-2: rgba(255,255,255,.10);
+    --border: rgba(255,255,255,.14);
+    --text: rgba(255,255,255,.90);
+    --muted: rgba(255,255,255,.65);
+    --danger: #ff5b6e;
+    --ok: #2dd4bf;
+  }
+
+  .admin-wrap{
+    background: radial-gradient(1200px 500px at 80% 0%, rgba(246,195,67,.18), transparent 60%),
+                radial-gradient(900px 400px at 10% 20%, rgba(255,213,106,.10), transparent 60%),
+                linear-gradient(180deg, var(--brand-navy), var(--brand-navy-2));
+    border-radius: 18px;
+    padding: 18px;
+  }
+
+  .admin-title{
+    color: #fff;
+    font-weight: 900;
+    letter-spacing: -0.3px;
+    margin-bottom: 4px;
+  }
+  .admin-subtitle{ color: rgba(255,255,255,.75); }
+
+  .brand-pill{
+    background: rgba(246,195,67,.16);
+    border: 1px solid rgba(246,195,67,.30);
+    color: #fff;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .brand-btn{
+    background: var(--brand-yellow);
+    border: 1px solid rgba(0,0,0,.08);
+    color: #111;
+    font-weight: 800;
+  }
+  .brand-btn:hover{ background: var(--brand-yellow-2); }
+  .brand-btn:disabled{ opacity: .65; }
+
+  .brand-btn-outline{
+    background: transparent;
+    border: 1px solid rgba(246,195,67,.55);
+    color: #fff;
+    font-weight: 800;
+  }
+  .brand-btn-outline:hover{
+    background: rgba(246,195,67,.16);
+    color:#fff;
+  }
+
+  .brand-card{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 3px solid rgba(246,195,67,.75);
+    border-radius: 14px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .brand-card h5, .brand-card h4, .brand-card h3,
+  .brand-card .card-title{
+    color: #fff !important;
+    font-weight: 900;
+  }
+
+  .kpi{
+    font-size: 30px;
+    font-weight: 900;
+    color: #fff;
+    line-height: 1.1;
+  }
+  .label{ color: var(--muted); font-weight: 800; }
+  .mini-muted{ color: var(--muted); }
+
+  .nav-pills .nav-link{
+    border-radius: 12px;
+    font-weight: 900;
+    color: rgba(255,255,255,.85);
+    border: 1px solid rgba(255,255,255,.14);
+    margin-left: 10px;
+  }
+  .nav-pills .nav-link.active{
+    background: rgba(246,195,67,.22);
+    border-color: rgba(246,195,67,.50);
+    color: #fff;
+  }
+
+  /* inputs */
+  .admin-wrap .form-control,
+  .admin-wrap .form-select{
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.18);
+    color: rgba(255,255,255,.92);
+  }
+  .admin-wrap .form-control::placeholder{ color: rgba(255,255,255,.55); }
+  .admin-wrap .form-select option{ color: #111; } /* dropdown readability */
+
+  /* table */
+  .brand-table{
+    color: rgba(255,255,255,.92);
+  }
+  .brand-table thead th{
+    background: rgba(246,195,67,.14);
+    color: rgba(255,255,255,.95);
+    font-weight: 900;
+    border-bottom: 1px solid rgba(255,255,255,.12);
+  }
+  .brand-table td{
+    border-top: 1px solid rgba(255,255,255,.08);
+    vertical-align: middle;
+  }
+  .table-responsive{
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.12);
+  }
+
+  .badge-role{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.16);
+    background: rgba(255,255,255,.08);
+    color: #fff;
+    font-weight: 800;
+    font-size: 12px;
+  }
+  .badge-role.admin{ border-color: rgba(246,195,67,.55); background: rgba(246,195,67,.12); }
+  .badge-role.manager{ border-color: rgba(45,212,191,.45); background: rgba(45,212,191,.10); }
+  .badge-role.expert{ border-color: rgba(99,102,241,.45); background: rgba(99,102,241,.10); }
+
+  .btn-danger-soft{
+    background: rgba(255,91,110,.14);
+    border: 1px solid rgba(255,91,110,.35);
+    color:#fff;
+    font-weight: 900;
+  }
+  .btn-danger-soft:hover{ background: rgba(255,91,110,.22); color:#fff; }
+
+  .btn-soft{
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.14);
+    color:#fff;
+    font-weight: 900;
+  }
+  .btn-soft:hover{ background: rgba(255,255,255,.12); color:#fff; }
+
+  .loading-line{
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--brand-yellow), transparent);
+    animation: shine 1.2s infinite linear;
+  }
+  @keyframes shine{ from{transform: translateX(-40%);} to{transform: translateX(40%);} }
+
+  .toast-wrap{
+    position: fixed;
+    bottom: 18px;
+    left: 18px;
+    z-index: 9999;
+    width: 340px;
+  }
+
+  /* Modal styling */
+  .modal-content{
+    background: rgba(15,23,42,.92);
+    border: 1px solid rgba(255,255,255,.14);
+    color: rgba(255,255,255,.92);
+    backdrop-filter: blur(12px);
+  }
+  .modal-header{
+    border-bottom: 1px solid rgba(255,255,255,.10);
+  }
+  .modal-footer{
+    border-top: 1px solid rgba(255,255,255,.10);
+  }
+</style>
+
+<div class="admin-wrap">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div>
+      <h3 class="admin-title">پنل ادمین</h3>
+      <div class="admin-subtitle">مدیریت کامل کاربران، گروه‌ها و گزارش‌های سامانه</div>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+      <span id="adminRolePill" class="brand-pill">Role: —</span>
+      <button id="btnRefreshAll" class="btn brand-btn btn-sm">
+        <i class="bi bi-arrow-repeat"></i>
+        بروزرسانی
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="mt-3">
+    <ul class="nav nav-pills" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" data-bs-target="#tab-stats" data-bs-toggle="pill" type="button">
+          <i class="bi bi-bar-chart-line"></i> آمار
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-target="#tab-users" data-bs-toggle="pill" type="button">
+          <i class="bi bi-people"></i> کاربران
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-target="#tab-groups" data-bs-toggle="pill" type="button">
+          <i class="bi bi-collection"></i> گروه‌ها
+        </button>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Loading bar -->
+  <div id="loadingBar" class="mt-2 d-none"><div class="loading-line"></div></div>
+
+  <!-- Error -->
+  <div id="admin-error" class="alert alert-danger mt-3 d-none" role="alert"></div>
+
+  <div class="tab-content mt-3">
+
+    <!-- ====================== STATS ====================== -->
+    <div class="tab-pane fade show active" id="tab-stats">
+      <div class="row g-3">
+        <div class="col-12 col-md-4">
+          <div class="brand-card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <div class="label">کل کاربران</div>
+                <div id="users_total" class="kpi">—</div>
+              </div>
+              <div class="text-warning fs-2"><i class="bi bi-people"></i></div>
+            </div>
+            <hr class="my-3" style="border-color:rgba(255,255,255,.12);" />
+            <div class="d-flex gap-3 small" style="color:rgba(255,255,255,.85);">
+              <span>ادمین: <b id="users_admin">—</b></span>
+              <span>مدیر: <b id="users_manager">—</b></span>
+              <span>کارشناس: <b id="users_expert">—</b></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <div class="brand-card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <div class="label">کل گروه‌ها</div>
+                <div id="groups_total" class="kpi">—</div>
+              </div>
+              <div class="text-warning fs-2"><i class="bi bi-collection"></i></div>
+            </div>
+            <hr class="my-3" style="border-color:rgba(255,255,255,.12);" />
+            <div class="d-flex gap-3 small" style="color:rgba(255,255,255,.85);">
+              <span>Read: <b id="groups_read">—</b></span>
+              <span>Write: <b id="groups_write">—</b></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+          <div class="brand-card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <div class="label">کل عضویت‌ها</div>
+                <div id="memberships_total" class="kpi">—</div>
+              </div>
+              <div class="text-warning fs-2"><i class="bi bi-person-check"></i></div>
+            </div>
+            <hr class="my-3" style="border-color:rgba(255,255,255,.12);" />
+            <div class="mini-muted small">مجموع رکوردهای عضویت کاربران در گروه‌ها</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="brand-card p-3 mt-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <h5 class="mb-0">گروه‌های پرتعداد (Top 10)</h5>
+          <span class="mini-muted small">برای نمودارها آماده است</span>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table brand-table mb-0">
+            <thead>
+              <tr>
+                <th style="width:70px;">#</th>
+                <th>نام گروه</th>
+                <th style="width:170px;">تعداد اعضا</th>
+              </tr>
+            </thead>
+            <tbody id="top_groups_tbody">
+              <tr><td colspan="3" class="mini-muted">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================== USERS ====================== -->
+    <div class="tab-pane fade" id="tab-users">
+      <div class="brand-card p-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <h5 class="mb-1">مدیریت کاربران</h5>
+            <div class="mini-muted small">فیلتر نقش، جستجو، افزودن و حذف کاربر</div>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn brand-btn-outline btn-sm" id="btnUsersRefresh">
+              <i class="bi bi-arrow-repeat"></i> بروزرسانی لیست
+            </button>
+            <button class="btn brand-btn btn-sm" data-bs-toggle="modal" data-bs-target="#modalCreateUser">
+              <i class="bi bi-person-plus"></i> افزودن کاربر
+            </button>
+          </div>
+        </div>
+
+        <hr class="my-3" style="border-color:rgba(255,255,255,.12);" />
+
+        <div class="row g-2 align-items-end">
+          <div class="col-12 col-md-3">
+            <label class="small mini-muted mb-1">فیلتر نقش</label>
+            <select id="usersRoleFilter" class="form-select">
+              <option value="">همه</option>
+              <option value="admin">ادمین</option>
+              <option value="manager">مدیر</option>
+              <option value="expert">کارشناس</option>
+            </select>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label class="small mini-muted mb-1">جستجو (username یا email)</label>
+            <input id="usersSearchInput" class="form-control" placeholder="مثلاً sara یا test@example.com" />
+          </div>
+
+          <div class="col-12 col-md-3 d-flex gap-2">
+            <button id="btnUsersSearch" class="btn brand-btn w-100">
+              <i class="bi bi-search"></i> جستجو
+            </button>
+            <button id="btnUsersClear" class="btn btn-soft w-100">
+              پاک کردن
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-3 table-responsive">
+          <table class="table brand-table mb-0">
+            <thead>
+              <tr>
+                <th style="width:80px;">ID</th>
+                <th>نام کاربری</th>
+                <th style="width:140px;">نقش</th>
+                <th>ایمیل</th>
+                <th style="width:200px;">آخرین ورود</th>
+                <th style="width:150px;">عملیات</th>
+              </tr>
+            </thead>
+            <tbody id="usersTbody">
+              <tr><td colspan="6" class="mini-muted">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====================== GROUPS ====================== -->
+    <div class="tab-pane fade" id="tab-groups">
+      <div class="brand-card p-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <h5 class="mb-1">مدیریت گروه‌ها</h5>
+            <div class="mini-muted small">تمام امکانات مدیر + مدیریت اعضا</div>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn brand-btn-outline btn-sm" id="btnGroupsRefresh">
+              <i class="bi bi-arrow-repeat"></i> بروزرسانی گروه‌ها
+            </button>
+          </div>
+        </div>
+
+        <hr class="my-3" style="border-color:rgba(255,255,255,.12);" />
+
+        <!-- Create group -->
+        <div class="row g-2 align-items-end">
+          <div class="col-12 col-md-5">
+            <label class="small mini-muted mb-1">نام گروه</label>
+            <input id="newGroupName" class="form-control" placeholder="مثلاً تیم آتش‌نشانی منطقه ۳" />
+          </div>
+          <div class="col-12 col-md-3">
+            <label class="small mini-muted mb-1">سطح دسترسی</label>
+            <select id="newGroupAccess" class="form-select">
+              <option value="read">read</option>
+              <option value="write">write</option>
+            </select>
+          </div>
+          <div class="col-12 col-md-4 d-flex gap-2">
+            <button id="btnCreateGroup" class="btn brand-btn w-100">
+              <i class="bi bi-plus-circle"></i> ساخت گروه
+            </button>
+            <button id="btnClearGroupForm" class="btn btn-soft w-100">پاک کردن</button>
+          </div>
+        </div>
+
+        <div class="mt-3 table-responsive">
+          <table class="table brand-table mb-0">
+            <thead>
+              <tr>
+                <th style="width:80px;">ID</th>
+                <th>نام گروه</th>
+                <th style="width:140px;">Access</th>
+                <th style="width:140px;">تعداد اعضا</th>
+                <th style="width:240px;">سازنده</th>
+                <th style="width:220px;">عملیات</th>
+              </tr>
+            </thead>
+            <tbody id="groupsTbody">
+              <tr><td colspan="6" class="mini-muted">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
 </div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<!-- ====================== MODALS ====================== -->
+
+<!-- Create User Modal -->
+<div class="modal fade" id="modalCreateUser" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">افزودن کاربر</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="createUserError" class="alert alert-danger d-none"></div>
+
+        <div class="row g-2">
+          <div class="col-12 col-md-4">
+            <label class="small mini-muted mb-1">username</label>
+            <input id="cuUsername" class="form-control" placeholder="مثلاً ali" />
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="small mini-muted mb-1">password</label>
+            <input id="cuPassword" type="password" class="form-control" placeholder="مثلاً 1234" />
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="small mini-muted mb-1">role</label>
+            <select id="cuRole" class="form-select">
+              <option value="expert">expert</option>
+              <option value="manager">manager</option>
+              <option value="admin">admin</option>
+            </select>
+          </div>
+
+          <div class="col-12">
+            <label class="small mini-muted mb-1">email (اختیاری)</label>
+            <input id="cuEmail" class="form-control" placeholder="مثلاً test@example.com" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-soft" data-bs-dismiss="modal">بستن</button>
+        <button id="btnCreateUserSubmit" class="btn brand-btn">
+          <i class="bi bi-check2-circle"></i> ایجاد
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Group Modal -->
+<div class="modal fade" id="modalEditGroup" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">ویرایش گروه</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="editGroupError" class="alert alert-danger d-none"></div>
+        <input type="hidden" id="egGroupId" />
+
+        <div class="row g-2">
+          <div class="col-12 col-md-8">
+            <label class="small mini-muted mb-1">نام گروه</label>
+            <input id="egName" class="form-control" />
+          </div>
+          <div class="col-12 col-md-4">
+            <label class="small mini-muted mb-1">سطح دسترسی</label>
+            <select id="egAccess" class="form-select">
+              <option value="read">read</option>
+              <option value="write">write</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-soft" data-bs-dismiss="modal">بستن</button>
+        <button id="btnEditGroupSave" class="btn brand-btn">
+          <i class="bi bi-save2"></i> ذخیره
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Members Modal -->
+<div class="modal fade" id="modalMembers" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title mb-0">اعضای گروه</h5>
+          <div class="mini-muted small" id="mmGroupTitle">—</div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <div id="membersError" class="alert alert-danger d-none"></div>
+        <input type="hidden" id="mmGroupId" />
+
+        <!-- Add member -->
+        <div class="brand-card p-3 mb-3" style="border-top:none;">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+              <div style="font-weight:900;color:#fff;">افزودن عضو</div>
+              <div class="mini-muted small">جستجو کاربر و افزودن به گروه</div>
+            </div>
+            <button id="btnReloadMembers" class="btn brand-btn-outline btn-sm">
+              <i class="bi bi-arrow-repeat"></i> بروزرسانی اعضا
+            </button>
+          </div>
+
+          <div class="row g-2 mt-2 align-items-end">
+            <div class="col-12 col-md-5">
+              <label class="small mini-muted mb-1">جستجوی کاربر</label>
+              <input id="mmUserSearch" class="form-control" placeholder="مثلاً sara یا test@example.com" />
+            </div>
+            <div class="col-12 col-md-3">
+              <button id="btnSearchUsersForMember" class="btn brand-btn w-100">
+                <i class="bi bi-search"></i> جستجو
+              </button>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="small mini-muted mb-1">انتخاب کاربر</label>
+              <select id="mmUserSelect" class="form-select">
+                <option value="">—</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mt-2 d-flex justify-content-end">
+            <button id="btnAddMember" class="btn brand-btn">
+              <i class="bi bi-person-plus"></i> افزودن عضو
+            </button>
+          </div>
+        </div>
+
+        <!-- Members table -->
+        <div class="table-responsive">
+          <table class="table brand-table mb-0">
+            <thead>
+              <tr>
+                <th style="width:90px;">User ID</th>
+                <th>نام کاربری</th>
+                <th style="width:160px;">نقش</th>
+                <th style="width:220px;">زمان عضویت</th>
+                <th style="width:160px;">عملیات</th>
+              </tr>
+            </thead>
+            <tbody id="membersTbody">
+              <tr><td colspan="5" class="mini-muted">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-soft" data-bs-dismiss="modal">بستن</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  function getToken() {
+    return (
+      localStorage.getItem("access_token") ||
+      localStorage.getItem("access") ||
+      localStorage.getItem("token") ||
+      localStorage.getItem("jwt") ||
+      localStorage.getItem("accessToken")
+    );
+  }
+
+  function showError(msg) {
+    const el = document.getElementById("admin-error");
+    el.textContent = msg;
+    el.classList.remove("d-none");
+  }
+  function clearError(){
+    const el = document.getElementById("admin-error");
+    el.classList.add("d-none");
+    el.textContent = "";
+  }
+  function setLoading(on){
+    document.getElementById("loadingBar").classList.toggle("d-none", !on);
+  }
+
+  function toast(msg){
+    const wrap = document.getElementById("toastWrap");
+    const id = "t" + Date.now();
+    wrap.insertAdjacentHTML("beforeend", `
+      <div id="${id}" class="alert alert-dark shadow-sm mb-2" style="border-left:4px solid var(--brand-yellow); background:rgba(0,0,0,.45); color:#fff;">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div style="font-weight:800;">${msg}</div>
+          <button class="btn btn-sm btn-light" onclick="document.getElementById('${id}').remove()">×</button>
+        </div>
+      </div>
+    `);
+    setTimeout(()=>{ const el=document.getElementById(id); if(el) el.remove(); }, 3500);
+  }
+
+  function roleBadge(role){
+    const r = role || "—";
+    const cls = (r === "admin" || r === "manager" || r === "expert") ? r : "";
+    const icon = (r === "admin") ? "bi-shield-lock" : (r === "manager") ? "bi-briefcase" : "bi-person";
+    return `<span class="badge-role ${cls}"><i class="bi ${icon}"></i>${r}</span>`;
+  }
+
+  async function apiRequest(method, url, body=null){
+    const token = getToken();
+    if (!token) {
+      window.location.href = "/ui/login/";
+      return { ok:false, status:401, data:null };
+    }
+
+    const opts = {
+      method,
+      headers: {
+        "Authorization": "Bearer " + token
+      }
+    };
+
+    if (body !== null){
+      opts.headers["Content-Type"] = "application/json";
+      opts.body = JSON.stringify(body);
+    }
+
+    const res = await fetch(url, opts);
+
+    if (res.status === 401) {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("access");
+      localStorage.removeItem("token");
+      localStorage.removeItem("jwt");
+      window.location.href = "/ui/login/";
+      return { ok:false, status:401, data:null };
+    }
+
+    let data = null;
+    try { data = await res.json(); } catch(e) {}
+
+    if (res.status === 403) {
+      showError("شما دسترسی لازم را ندارید.");
+      return { ok:false, status:403, data };
+    }
+
+    if (!res.ok) {
+      return { ok:false, status:res.status, data };
+    }
+
+    return { ok:true, status:res.status, data };
+  }
+
+  function setInlineError(id, msg){
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.remove("d-none");
+  }
+  function clearInlineError(id){
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = "";
+    el.classList.add("d-none");
+  }
+
+  /* ===================== LOAD PING + STATS ===================== */
+  async function loadPingAndStats(){
+    clearError();
+    setLoading(true);
+
+    const ping = await apiRequest("GET", "/api/users/admin/ping/");
+    if (!ping.ok) { setLoading(false); return; }
+    document.getElementById("adminRolePill").textContent = "Role: " + (ping.data.user?.role || "—");
+
+    const stats = await apiRequest("GET", "/api/users/admin/stats/");
+    if (!stats.ok) { setLoading(false); return; }
+
+    const data = stats.data;
+
+    document.getElementById("users_total").textContent = data.users_total ?? 0;
+    document.getElementById("users_admin").textContent = data.users_by_role?.admin ?? 0;
+    document.getElementById("users_manager").textContent = data.users_by_role?.manager ?? 0;
+    document.getElementById("users_expert").textContent = data.users_by_role?.expert ?? 0;
+
+    document.getElementById("groups_total").textContent = data.groups_total ?? 0;
+    document.getElementById("groups_read").textContent = data.groups_by_access_level?.read ?? 0;
+    document.getElementById("groups_write").textContent = data.groups_by_access_level?.write ?? 0;
+
+    document.getElementById("memberships_total").textContent = data.memberships_total ?? 0;
+
+    const tbody = document.getElementById("top_groups_tbody");
+    const top = Array.isArray(data.top_groups) ? data.top_groups : [];
+    if (top.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="mini-muted">گروهی وجود ندارد.</td></tr>';
+    } else {
+      tbody.innerHTML = top.map((g, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${g.name ?? "—"}</td>
+          <td>${g.members_count ?? 0}</td>
+        </tr>
+      `).join("");
+    }
+
+    setLoading(false);
+  }
+
+  /* ===================== USERS TAB ===================== */
+  async function loadUsers(){
+    const role = document.getElementById("usersRoleFilter").value;
+    const q = document.getElementById("usersSearchInput").value.trim();
+
+    let url = "/api/users/admin/users/";
+    const params = [];
+    if (role) params.push("role=" + encodeURIComponent(role));
+    if (q) params.push("q=" + encodeURIComponent(q));
+    if (params.length) url += "?" + params.join("&");
+
+    const res = await apiRequest("GET", url);
+    if (!res.ok) return;
+
+    const rows = Array.isArray(res.data) ? res.data : [];
+    renderUsers(rows);
+  }
+
+  function renderUsers(rows){
+    const tbody = document.getElementById("usersTbody");
+    if (!rows.length){
+      tbody.innerHTML = '<tr><td colspan="6" class="mini-muted">کاربری یافت نشد.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(u => `
+      <tr>
+        <td>${u.id}</td>
+        <td style="font-weight:900;">${u.username ?? "—"}</td>
+        <td>${roleBadge(u.role)}</td>
+        <td>${u.email ?? ""}</td>
+        <td class="mini-muted">${u.last_login ? new Date(u.last_login).toLocaleString("fa-IR") : "—"}</td>
+        <td>
+          <div class="d-flex gap-2">
+            <button class="btn btn-danger-soft btn-sm" data-user-id="${u.id}" data-user-name="${u.username ?? ""}" onclick="window.__deleteUser(this)">
+              <i class="bi bi-trash"></i>
+              حذف
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join("");
+  }
+
+  window.__deleteUser = async function(btn){
+    const id = btn.getAttribute("data-user-id");
+    const name = btn.getAttribute("data-user-name") || "";
+    if (!confirm(`حذف کاربر "${name}" ؟`)) return;
+
+    const res = await apiRequest("DELETE", `/api/users/admin/users/${id}/`);
+    if (!res.ok) {
+      toast(res.data?.detail || "خطا در حذف کاربر");
+      return;
+    }
+    toast(res.data?.detail || "کاربر حذف شد");
+    await loadUsers();
+    await loadPingAndStats();
+  }
+
+  async function createUser(){
+    clearInlineError("createUserError");
+
+    const username = document.getElementById("cuUsername").value.trim();
+    const password = document.getElementById("cuPassword").value.trim();
+    const role = document.getElementById("cuRole").value;
+    const email = document.getElementById("cuEmail").value.trim();
+
+    if (!username || !password){
+      setInlineError("createUserError", "username و password الزامی است.");
+      return;
+    }
+
+    const btn = document.getElementById("btnCreateUserSubmit");
+    btn.disabled = true;
+
+    const res = await apiRequest("POST", "/api/users/admin/users/create/", { username, password, role, email });
+    btn.disabled = false;
+
+    if (!res.ok){
+      setInlineError("createUserError", res.data?.detail || "خطا در ایجاد کاربر");
+      return;
+    }
+
+    toast("کاربر ایجاد شد");
+    document.getElementById("cuUsername").value = "";
+    document.getElementById("cuPassword").value = "";
+    document.getElementById("cuEmail").value = "";
+    document.getElementById("cuRole").value = "expert";
+
+    const modalEl = document.getElementById("modalCreateUser");
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+
+    await loadUsers();
+    await loadPingAndStats();
+  }
+
+  /* ===================== GROUPS TAB ===================== */
+  async function loadGroups(){
+    const res = await apiRequest("GET", "/api/users/groups/");
+    if (!res.ok) return;
+
+    const rows = Array.isArray(res.data) ? res.data : [];
+    renderGroups(rows);
+  }
+
+  function renderGroups(rows){
+    const tbody = document.getElementById("groupsTbody");
+    if (!rows.length){
+      tbody.innerHTML = '<tr><td colspan="6" class="mini-muted">گروهی وجود ندارد.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(g => `
+      <tr>
+        <td>${g.id}</td>
+        <td style="font-weight:900;">${g.name ?? "—"}</td>
+        <td><span class="badge-role">${g.access_level ?? "—"}</span></td>
+        <td>${g.members_count ?? 0}</td>
+        <td class="mini-muted">${(g.created_by && (g.created_by.username || g.created_by)) ? (g.created_by.username || g.created_by) : "—"}</td>
+        <td>
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-soft btn-sm"
+              data-bs-toggle="modal"
+              data-bs-target="#modalMembers"
+              onclick="window.__openMembers(${g.id}, '${(g.name||'').replace(/'/g, "\\'")}', '${g.access_level||''}')">
+              <i class="bi bi-people"></i> اعضا
+            </button>
+
+            <button class="btn btn-soft btn-sm"
+              data-bs-toggle="modal"
+              data-bs-target="#modalEditGroup"
+              onclick="window.__openEditGroup(${g.id}, '${(g.name||'').replace(/'/g, "\\'")}', '${g.access_level||''}')">
+              <i class="bi bi-pencil-square"></i> ویرایش
+            </button>
+
+            <button class="btn btn-danger-soft btn-sm"
+              onclick="window.__deleteGroup(${g.id}, '${(g.name||'').replace(/'/g, "\\'")}')">
+              <i class="bi bi-trash"></i> حذف
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join("");
+  }
+
+  async function createGroup(){
+    const name = document.getElementById("newGroupName").value.trim();
+    const access_level = document.getElementById("newGroupAccess").value;
+
+    if (!name){
+      toast("نام گروه را وارد کنید.");
+      return;
+    }
+
+    const btn = document.getElementById("btnCreateGroup");
+    btn.disabled = true;
+    const res = await apiRequest("POST", "/api/users/groups/", { name, access_level });
+    btn.disabled = false;
+
+    if (!res.ok){
+      toast(res.data?.detail || "خطا در ساخت گروه");
+      return;
+    }
+
+    toast("گروه ساخته شد");
+    document.getElementById("newGroupName").value = "";
+    document.getElementById("newGroupAccess").value = "read";
+
+    await loadGroups();
+    await loadPingAndStats();
+  }
+
+  window.__openEditGroup = function(id, name, access){
+    clearInlineError("editGroupError");
+    document.getElementById("egGroupId").value = id;
+    document.getElementById("egName").value = name || "";
+    document.getElementById("egAccess").value = (access === "write") ? "write" : "read";
+  }
+
+  async function saveEditGroup(){
+    clearInlineError("editGroupError");
+    const id = document.getElementById("egGroupId").value;
+    const name = document.getElementById("egName").value.trim();
+    const access_level = document.getElementById("egAccess").value;
+
+    if (!id){
+      setInlineError("editGroupError", "شناسه گروه نامعتبر است.");
+      return;
+    }
+    if (!name){
+      setInlineError("editGroupError", "نام گروه الزامی است.");
+      return;
+    }
+
+    const btn = document.getElementById("btnEditGroupSave");
+    btn.disabled = true;
+
+    const res = await apiRequest("PATCH", `/api/users/groups/${id}/`, { name, access_level });
+    btn.disabled = false;
+
+    if (!res.ok){
+      setInlineError("editGroupError", res.data?.detail || "خطا در ویرایش گروه");
+      return;
+    }
+
+    toast(res.data?.detail || "گروه بروزرسانی شد");
+    const modalEl = document.getElementById("modalEditGroup");
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+
+    await loadGroups();
+    await loadPingAndStats();
+  }
+
+  window.__deleteGroup = async function(id, name){
+    if (!confirm(`حذف گروه "${name}" ؟`)) return;
+
+    const res = await apiRequest("DELETE", `/api/users/groups/${id}/`);
+    if (!res.ok){
+      toast(res.data?.detail || "خطا در حذف گروه");
+      return;
+    }
+    toast(res.data?.detail || "گروه حذف شد");
+    await loadGroups();
+    await loadPingAndStats();
+  }
+
+  /* ===================== MEMBERS MODAL ===================== */
+  window.__openMembers = async function(groupId, groupName, accessLevel){
+    clearInlineError("membersError");
+    document.getElementById("mmGroupId").value = groupId;
+    document.getElementById("mmGroupTitle").textContent = `گروه: ${groupName} (access: ${accessLevel || "—"})`;
+    document.getElementById("mmUserSearch").value = "";
+    document.getElementById("mmUserSelect").innerHTML = '<option value="">—</option>';
+
+    await loadMembers(groupId);
+  }
+
+  async function loadMembers(groupId){
+    const res = await apiRequest("GET", `/api/users/groups/${groupId}/members/`);
+    if (!res.ok){
+      setInlineError("membersError", res.data?.detail || "خطا در دریافت اعضا");
+      return;
+    }
+
+    const members = Array.isArray(res.data.members) ? res.data.members : [];
+    renderMembers(groupId, members);
+  }
+
+  function renderMembers(groupId, members){
+    const tbody = document.getElementById("membersTbody");
+    if (!members.length){
+      tbody.innerHTML = '<tr><td colspan="5" class="mini-muted">عضوی وجود ندارد.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = members.map(m => `
+      <tr>
+        <td>${m.user?.id ?? m.user_id ?? "—"}</td>
+        <td style="font-weight:900;">${m.user?.username ?? m.username ?? "—"}</td>
+        <td>${roleBadge(m.user?.role ?? m.role)}</td>
+        <td class="mini-muted">${m.joined_at ? new Date(m.joined_at).toLocaleString("fa-IR") : "—"}</td>
+        <td>
+          <button class="btn btn-danger-soft btn-sm"
+            onclick="window.__removeMember(${groupId}, ${m.user?.id ?? m.user_id})">
+            <i class="bi bi-person-dash"></i> حذف عضو
+          </button>
+        </td>
+      </tr>
+    `).join("");
+  }
+
+  window.__removeMember = async function(groupId, userId){
+    if (!confirm("حذف این عضو از گروه؟")) return;
+
+    const res = await apiRequest("DELETE", `/api/users/groups/${groupId}/members/${userId}/`);
+    if (!res.ok){
+      toast(res.data?.detail || "خطا در حذف عضو");
+      return;
+    }
+
+    toast(res.data?.detail || "عضو حذف شد");
+    await loadMembers(groupId);
+    await loadGroups();
+    await loadPingAndStats();
+  }
+
+  async function searchUsersForMember(){
+    clearInlineError("membersError");
+    const q = document.getElementById("mmUserSearch").value.trim();
+    if (!q){
+      setInlineError("membersError", "عبارت جستجو را وارد کنید.");
+      return;
+    }
+
+    const url = "/api/users/admin/users/?q=" + encodeURIComponent(q);
+    const res = await apiRequest("GET", url);
+    if (!res.ok){
+      setInlineError("membersError", res.data?.detail || "خطا در جستجوی کاربران");
+      return;
+    }
+
+    const users = Array.isArray(res.data) ? res.data : [];
+    const sel = document.getElementById("mmUserSelect");
+    if (!users.length){
+      sel.innerHTML = '<option value="">کاربری یافت نشد</option>';
+      return;
+    }
+
+    sel.innerHTML = ['<option value="">— انتخاب کنید —</option>']
+      .concat(users.map(u => `<option value="${u.id}">${u.username} (${u.role})</option>`))
+      .join("");
+  }
+
+  async function addMember(){
+    clearInlineError("membersError");
+    const groupId = document.getElementById("mmGroupId").value;
+    const userId = document.getElementById("mmUserSelect").value;
+
+    if (!groupId){
+      setInlineError("membersError", "شناسه گروه نامعتبر است.");
+      return;
+    }
+    if (!userId){
+      setInlineError("membersError", "کاربر را انتخاب کنید.");
+      return;
+    }
+
+    const res = await apiRequest("POST", "/api/users/groups/members/add/", {
+      group_id: parseInt(groupId),
+      user_id: parseInt(userId)
+    });
+
+    if (!res.ok){
+      toast(res.data?.detail || "خطا در افزودن عضو");
+      return;
+    }
+
+    toast(res.data?.detail || "عضو اضافه شد");
+    await loadMembers(groupId);
+    await loadGroups();
+    await loadPingAndStats();
+  }
+
+  /* ===================== EVENTS ===================== */
+  document.getElementById("btnRefreshAll").addEventListener("click", async ()=>{
+    await loadPingAndStats();
+    await loadUsers();
+    await loadGroups();
+    toast("همه بخش‌ها بروزرسانی شد.");
+  });
+
+  document.getElementById("btnUsersRefresh").addEventListener("click", loadUsers);
+  document.getElementById("btnUsersSearch").addEventListener("click", loadUsers);
+  document.getElementById("btnUsersClear").addEventListener("click", ()=>{
+    document.getElementById("usersRoleFilter").value = "";
+    document.getElementById("usersSearchInput").value = "";
+    loadUsers();
+  });
+  document.getElementById("usersRoleFilter").addEventListener("change", loadUsers);
+  document.getElementById("usersSearchInput").addEventListener("keydown", (e)=>{
+    if(e.key === "Enter") loadUsers();
+  });
+
+  document.getElementById("btnCreateUserSubmit").addEventListener("click", createUser);
+
+  document.getElementById("btnGroupsRefresh").addEventListener("click", loadGroups);
+  document.getElementById("btnCreateGroup").addEventListener("click", createGroup);
+  document.getElementById("btnClearGroupForm").addEventListener("click", ()=>{
+    document.getElementById("newGroupName").value = "";
+    document.getElementById("newGroupAccess").value = "read";
+  });
+  document.getElementById("btnEditGroupSave").addEventListener("click", saveEditGroup);
+
+  document.getElementById("btnSearchUsersForMember").addEventListener("click", searchUsersForMember);
+  document.getElementById("btnAddMember").addEventListener("click", addMember);
+  document.getElementById("btnReloadMembers").addEventListener("click", ()=>{
+    const groupId = document.getElementById("mmGroupId").value;
+    if (groupId) loadMembers(groupId);
+  });
+
+  /* ===================== INIT ===================== */
+  document.addEventListener("DOMContentLoaded", async ()=>{
+    clearError();
+    setLoading(true);
+    await loadPingAndStats();
+    await loadUsers();
+    await loadGroups();
+    setLoading(false);
+  });
+})();
+</script>
 {% endblock %}
