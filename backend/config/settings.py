@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "rest_framework",
     'users',
     'fire',
+    'frontend',
 
 ]
 
@@ -74,7 +75,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR.parent / 'frontend' / 'templates'],
+        'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

@@ -1,0 +1,221 @@
+{% extends "frontend/base.html" %}
+
+{% block title %}ورود | سامانه مدیریت بحران{% endblock %}
+
+{% block extra_css %}
+<style>
+  body {
+    min-height: 100vh;
+    margin: 0;
+    background:
+      radial-gradient(1200px 600px at 75% 25%, rgba(255, 199, 0, .16), transparent 60%),
+      radial-gradient(900px 500px at 25% 70%, rgba(59, 130, 246, .14), transparent 60%),
+      radial-gradient(700px 400px at 50% 80%, rgba(34, 197, 94, .08), transparent 60%),
+      #0b1220;
+    color: #e5e7eb;
+    overflow: hidden;
+  }
+
+  .stars {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: .55;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,.55) 50%, transparent 51%),
+      radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,.45) 50%, transparent 51%),
+      radial-gradient(1px 1px at 70% 30%, rgba(255,255,255,.5) 50%, transparent 51%),
+      radial-gradient(1px 1px at 85% 60%, rgba(255,255,255,.35) 50%, transparent 51%),
+      radial-gradient(1px 1px at 25% 55%, rgba(255,255,255,.4) 50%, transparent 51%),
+      radial-gradient(1px 1px at 60% 15%, rgba(255,255,255,.35) 50%, transparent 51%),
+      radial-gradient(1px 1px at 15% 75%, rgba(255,255,255,.35) 50%, transparent 51%);
+    animation: drift 14s ease-in-out infinite alternate;
+  }
+  @keyframes drift { from { transform: translateY(0px);} to { transform: translateY(-12px);} }
+
+  .login-wrap {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 22px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .card-glass {
+    width: min(520px, 94vw);
+    background: rgba(255,255,255, .07);
+    border: 1px solid rgba(255,255,255, .14);
+    border-radius: 18px;
+    box-shadow: 0 20px 70px rgba(0,0,0,.45);
+    backdrop-filter: blur(12px);
+    padding: 26px;
+  }
+
+  .title {
+    margin: 0 0 18px 0;
+    font-weight: 900;
+    letter-spacing: .2px;
+    font-size: 18px;
+    color: #f8fafc;
+    text-align: center;
+  }
+
+  .form-label {
+    color: rgba(226,232,240,.9);
+    font-weight: 800;
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  .form-control {
+    background: rgba(15, 23, 42, .35);
+    border: 1px solid rgba(148, 163, 184, .18);
+    color: #e5e7eb;
+    border-radius: 14px;
+    padding: 12px 14px;
+    transition: transform .12s ease, border-color .12s ease;
+  }
+  .form-control:focus {
+    background: rgba(15, 23, 42, .45);
+    border-color: rgba(255, 199, 0, .55);
+    box-shadow: 0 0 0 .2rem rgba(255, 199, 0, .12);
+    transform: translateY(-1px);
+    color: #fff;
+  }
+  .form-control::placeholder { color: rgba(226,232,240,.45); }
+
+  .btn-login {
+    border: none;
+    border-radius: 14px;
+    padding: 12px 12px;
+    font-weight: 900;
+    background: linear-gradient(90deg, #fbbf24, #f59e0b);
+    color: #0b1220;
+    box-shadow: 0 10px 30px rgba(245, 158, 11, .18);
+  }
+  .btn-login:disabled { opacity: .7; cursor: not-allowed; }
+
+  .row-inline {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin-top: 10px;
+  }
+  .row-inline .form-check-label {
+    color: rgba(226,232,240,.8);
+    font-size: 12px;
+  }
+
+  .error-box {
+    display: none;
+    margin-top: 12px;
+    background: rgba(239, 68, 68, .14);
+    border: 1px solid rgba(239, 68, 68, .26);
+    color: #fecaca;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.8;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stars"></div>
+
+<div class="login-wrap">
+  <div class="card-glass">
+    <h1 class="title">ورود به سامانه مدیریت بحران</h1>
+
+    <form id="loginForm" autocomplete="off">
+      <div class="mb-3">
+        <label class="form-label">نام کاربری</label>
+        <input id="username" class="form-control" type="text" placeholder="مثلاً manager1" required>
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label">رمز عبور</label>
+        <input id="password" class="form-control" type="password" placeholder="********" required>
+      </div>
+
+      <div class="row-inline">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="rememberMe" checked>
+          <label class="form-check-label" for="rememberMe">مرا به خاطر بسپار</label>
+        </div>
+      </div>
+
+      <button id="btnLogin" class="btn btn-login w-100 mt-3" type="submit">ورود</button>
+      <div id="errorBox" class="error-box"></div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const form = document.getElementById("loginForm");
+  const btn = document.getElementById("btnLogin");
+  const errorBox = document.getElementById("errorBox");
+  const rememberMe = document.getElementById("rememberMe");
+
+  function showError(msg) {
+    errorBox.style.display = "block";
+    errorBox.textContent = msg;
+  }
+  function clearError() {
+    errorBox.style.display = "none";
+    errorBox.textContent = "";
+  }
+
+  // If token exists, go to main UI
+  const tokenLocal = localStorage.getItem("access_token");
+  const tokenSession = sessionStorage.getItem("access_token");
+  if (tokenLocal || tokenSession) {
+    window.location.href = "/ui/";
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearError();
+
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
+
+    btn.disabled = true;
+    btn.textContent = "در حال ورود...";
+
+    try {
+      const res = await fetch("/api/users/login/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showError(data.detail || "نام کاربری یا رمز عبور اشتباه است.");
+        return;
+      }
+
+      const token = data.access;
+      if (rememberMe.checked) {
+        localStorage.setItem("access_token", token);
+        sessionStorage.removeItem("access_token");
+      } else {
+        sessionStorage.setItem("access_token", token);
+        localStorage.removeItem("access_token");
+      }
+
+      window.location.href = "/ui/";
+    } catch (err) {
+      console.error(err);
+      showError("خطا در ارتباط با سرور.");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "ورود";
+    }
+  });
+</script>
+{% endblock %}

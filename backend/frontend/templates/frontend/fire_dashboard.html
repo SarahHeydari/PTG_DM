@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fire | Current Situation</title>
+
+  <!-- Mazer CSS (CDN) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/zuramai/mazer@docs/demo/assets/compiled/css/app.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/zuramai/mazer@docs/demo/assets/compiled/css/app-dark.css">
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+  <style>
+    html, body { height: 100%; margin: 0; }
+    .topbar {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      background: #1f3a7a;
+      color: #fff;
+      position: sticky;
+      top: 0;
+      z-index: 1200;
+    }
+    .topbar .title { font-weight: 700; letter-spacing: .2px; }
+    .app-shell {
+      height: calc(100vh - 64px);
+      position: relative;
+      background: #0b1220;
+    }
+    #map { height: 100%; width: 100%; }
+
+    /* Left panel like GWIS */
+    .left-panel {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      width: 330px;
+      max-height: calc(100% - 24px);
+      overflow: auto;
+      z-index: 1100;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      background: #ffffff;
+    }
+    .panel-section {
+      border-bottom: 1px solid #eef2f7;
+      padding: 12px 12px;
+    }
+    .panel-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+    }
+
+    /* Right floating toolbar */
+    .right-tools {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 1100;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .tool-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba(255,255,255,.92);
+      border: 1px solid rgba(15,23,42,.12);
+      box-shadow: 0 10px 30px rgba(0,0,0,.18);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      user-select: none;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .tool-btn:hover { background: #fff; }
+
+    /* Better checkbox spacing */
+    .form-check { margin-bottom: 8px; }
+  </style>
+</head>
+
+<body>
+  <div class="topbar">
+    <div class="title">GWIS-like | Fire Current Situation (Demo)</div>
+    <div>
+      <span class="badge bg-light text-dark">Fire</span>
+    </div>
+  </div>
+
+  <div class="app-shell">
+    <!-- Map -->
+    <div id="map"></div>
+
+    <!-- Left Panel -->
+    <div class="left-panel">
+      <div class="panel-section">
+        <div class="panel-title">Map Options</div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="layer1" checked>
+          <label class="form-check-label" for="layer1">Base Map (OSM)</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="layer2">
+          <label class="form-check-label" for="layer2">Active Fires (demo layer)</label>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-title">Forecasts</div>
+        <div class="mb-2">
+          <label class="form-label mb-1">Index</label>
+          <select class="form-select form-select-sm">
+            <option>Fire Weather Index (FWI)</option>
+            <option>Temperature</option>
+            <option>Wind</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <label class="form-label mb-1">Date</label>
+          <input type="date" class="form-control form-control-sm"/>
+        </div>
+        <button class="btn btn-sm btn-primary w-100">Apply</button>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-title">Rapid Damage Assessment</div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-outline-secondary w-100">Last 1 Day</button>
+          <button class="btn btn-sm btn-outline-secondary w-100">Last 7 Days</button>
+          <button class="btn btn-sm btn-outline-secondary w-100">Last 30 Days</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Tools -->
+    <div class="right-tools">
+      <div class="tool-btn" id="zoomIn">+</div>
+      <div class="tool-btn" id="zoomOut">−</div>
+      <div class="tool-btn" id="home">⌂</div>
+    </div>
+  </div>
+
+  <!-- Leaflet -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    // Map init
+    const map = L.map('map', { zoomControl: false }).setView([32.0, 53.0], 5);
+
+    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    // Controls
+    const zoom = L.control.zoom({ position: 'topright' }).addTo(map);
+    L.control.scale({ position: 'bottomright' }).addTo(map);
+
+    // Right toolbar buttons
+    document.getElementById('zoomIn').onclick = () => map.zoomIn();
+    document.getElementById('zoomOut').onclick = () => map.zoomOut();
+    document.getElementById('home').onclick = () => map.setView([32.0, 53.0], 5);
+
+    // Demo layer (just a marker)
+    const demoMarker = L.marker([35.6892, 51.3890]).bindPopup("Demo: Tehran");
+    document.getElementById('layer2').addEventListener('change', (e) => {
+      if (e.target.checked) demoMarker.addTo(map);
+      else map.removeLayer(demoMarker);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,272 @@
+{% extends "frontend/base.html" %}
+
+{% block title %}پنل مدیریت سامانه{% endblock %}
+
+{% block extra_css %}
+<style>
+  body{
+    background:
+      radial-gradient(1100px 650px at 75% 25%, rgba(245, 158, 11, .18), transparent 60%),
+      radial-gradient(900px 500px at 25% 70%, rgba(59, 130, 246, .14), transparent 60%),
+      #071226;
+    overflow: hidden;
+  }
+
+  .stars{
+    position: fixed; inset: 0; pointer-events: none; opacity: .55;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,.55) 50%, transparent 51%),
+      radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,.45) 50%, transparent 51%),
+      radial-gradient(1px 1px at 70% 30%, rgba(255,255,255,.5) 50%, transparent 51%),
+      radial-gradient(1px 1px at 85% 60%, rgba(255,255,255,.35) 50%, transparent 51%),
+      radial-gradient(1px 1px at 25% 55%, rgba(255,255,255,.4) 50%, transparent 51%);
+    animation: drift 14s ease-in-out infinite alternate;
+  }
+  @keyframes drift { from{ transform: translateY(0)} to{ transform: translateY(-14px)} }
+
+  .wrap{
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 28px 18px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .panel{
+    width: min(1120px, 96vw);
+    position: relative;
+  }
+
+  /* ---- Topbar: title right / user left ---- */
+  .topbar{
+    position: fixed;
+    top: 18px;
+    left: 18px;
+    right: 18px;
+    display:flex;
+    justify-content: space-between;
+    align-items:center;
+    z-index: 5;
+    pointer-events: none; /* so only buttons are clickable */
+  }
+  .topbar > *{ pointer-events: auto; }
+
+  .titlebox{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    color: #ffffff;
+    justify-content: flex-end;
+  }
+  .titlebox h1{
+    margin:0;
+    font-weight: 900;
+    font-size: 22px;
+    color: #ffffff;
+  }
+  .titlebox .pipe{
+    width: 3px;
+    height: 18px;
+    border-radius: 99px;
+    background: linear-gradient(#fbbf24, #f59e0b);
+  }
+
+  .userbar{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+  }
+
+  .pill{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding: 10px 12px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.12);
+    color: rgba(226,232,240,.92);
+    box-shadow: 0 10px 30px rgba(0,0,0,.22);
+    backdrop-filter: blur(10px);
+  }
+  .avatar{
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, .25);
+    border: 1px solid rgba(245, 158, 11, .35);
+    display:grid;
+    place-items:center;
+    font-weight: 900;
+    color: #ffd666;
+  }
+  .uname{ font-weight: 900; font-size: 13px; line-height: 1.1; }
+  .urole{ opacity:.75; font-size: 11px; margin-top: 2px; }
+
+  .btn-logout{
+    cursor: pointer;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-weight: 900;
+    background: rgba(239,68,68,.14);
+    border: 1px solid rgba(239,68,68,.25);
+    color: #fecaca;
+    font-size: 12px;
+  }
+
+  /* ---- Cards: more square ---- */
+  .grid{
+    display:flex;
+    justify-content: center;
+    gap: 22px;
+    flex-wrap: wrap;
+    margin-top: 50px;
+  }
+
+  .tile{
+    width: 280px;
+    height: 200px;              /* مربعی‌تر */
+    border-radius: 16px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 22px 70px rgba(0,0,0,.38);
+    backdrop-filter: blur(12px);
+    padding: 16px;
+    display:flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .tile:hover{
+    transform: translateY(-2px);
+    box-shadow: 0 30px 90px rgba(0,0,0,.48);
+  }
+
+  .tile-head{
+    border-radius: 14px;
+    background: rgba(148,163,184,.16);
+    border: 1px solid rgba(148,163,184,.18);
+    padding: 18px 16px;
+    text-align: center;
+    color: #f8fafc;
+    font-weight: 900;
+    font-size: 20px;
+  }
+
+  .tile-btn{
+    width: 100%;
+    border: none;
+    border-radius: 14px;
+    padding: 12px 12px;
+    font-weight: 900;
+    background: linear-gradient(90deg, #fbbf24, #f59e0b);
+    color: #0b1220;
+    box-shadow: 0 10px 30px rgba(245, 158, 11, .18);
+  }
+  .tile-btn:active{ transform: translateY(1px); }
+
+  @media (max-width: 920px){
+    .tile{ width: min(320px, 92vw); height: 190px; }
+    .topbar{ position: static; margin-bottom: 16px; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stars"></div>
+
+<div class="topbar">
+  <!-- Left: title -->
+  <div class="titlebox">
+    <div class="pipe"></div>
+    <h1>سامانه مدیریت بحران</h1>
+  </div>
+
+  <!-- Right: user -->
+  <div class="userbar">
+    <button class="btn-logout" id="btnLogout">خروج</button>
+
+    <div class="pill">
+      <div class="avatar" id="avatar">U</div>
+      <div>
+        <div class="uname" id="username">در حال بارگذاری...</div>
+        <div class="urole" id="role"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="wrap">
+  <div class="panel">
+    <div class="grid">
+      <div class="tile">
+        <div class="tile-head">آتش‌سوزی</div>
+        <button class="tile-btn" onclick="location.href='/ui/fire/'">ورود</button>
+      </div>
+
+      <div class="tile">
+        <div class="tile-head">زلزله</div>
+        <button class="tile-btn" onclick="alert('فعلاً در دمو فعال نیست')">ورود</button>
+      </div>
+
+      <div class="tile">
+        <div class="tile-head">سیل</div>
+        <button class="tile-btn" onclick="alert('فعلاً در دمو فعال نیست')">ورود</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function getToken(){
+    return localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
+  }
+  function clearAuth(){
+    localStorage.removeItem("access_token");
+    sessionStorage.removeItem("access_token");
+  }
+
+  const token = getToken();
+  if (!token){
+    window.location.href = "/ui/login/";
+  }
+
+  async function loadProfile(){
+    try{
+      const res = await fetch("/api/users/myprofile/", {
+        method: "GET",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (res.status === 401 || res.status === 403){
+        clearAuth();
+        window.location.href = "/ui/login/";
+        return;
+      }
+
+      const data = await res.json();
+      const username = data.username || "کاربر";
+      const role = data.role || "";
+
+      document.getElementById("username").textContent = username;
+      document.getElementById("role").textContent = role;
+      document.getElementById("avatar").textContent = (username?.[0] || "U").toUpperCase();
+    }catch(e){
+      console.error(e);
+      document.getElementById("username").textContent = "کاربر";
+      document.getElementById("role").textContent = "";
+    }
+  }
+
+  loadProfile();
+
+  document.getElementById("btnLogout").addEventListener("click", () => {
+    clearAuth();
+    window.location.href = "/ui/login/";
+  });
+</script>
+{% endblock %}
