@@ -165,3 +165,9 @@ class UserMeSerializer(serializers.ModelSerializer):
         if User.objects.filter(username=value).exclude(id=user.id).exists():
             raise serializers.ValidationError("این نام کاربری قبلاً استفاده شده است.")
         return value
+    
+
+class AdminUserListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "username", "role", "email", "date_joined", "last_login"]

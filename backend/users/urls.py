@@ -13,6 +13,14 @@ urlpatterns = [
     path("groups/<int:group_id>/", AccessGroupDetailAPIView.as_view(), name="group-detail"),    
     path("users/", UserListAPIView.as_view(), name="users-list"),
     path("myprofile/", UserMeAPIView.as_view(), name="user-myprofile"),
+    path("admin/ping/", AdminPingAPIView.as_view()),
+    path("admin/users/", AdminUserListAPIView.as_view()),
+    path("admin/users/create/", AdminUserCreateAPIView.as_view()),
+    path("admin/users/<int:user_id>/", AdminUserDeleteAPIView.as_view()),
+    path("admin/stats/", AdminStatsAPIView.as_view()),
+
+
+
 
 
 
