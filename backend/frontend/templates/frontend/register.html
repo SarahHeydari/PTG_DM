@@ -1,0 +1,277 @@
+{% extends "frontend/base.html" %}
+
+{% block title %}ثبت‌نام | سامانه مدیریت بحران{% endblock %}
+
+{% block extra_css %}
+<style>
+  body{
+    min-height: 100vh;
+    margin: 0;
+    background:
+      radial-gradient(1200px 600px at 75% 25%, rgba(255, 199, 0, .14), transparent 60%),
+      radial-gradient(900px 500px at 25% 70%, rgba(59, 130, 246, .12), transparent 60%),
+      #0b1220;
+    color: #e5e7eb;
+    overflow: hidden;
+  }
+
+  .stars{
+    position: fixed; inset: 0; pointer-events: none; opacity: .55;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,.55) 50%, transparent 51%),
+      radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,.45) 50%, transparent 51%),
+      radial-gradient(1px 1px at 70% 30%, rgba(255,255,255,.5) 50%, transparent 51%),
+      radial-gradient(1px 1px at 85% 60%, rgba(255,255,255,.35) 50%, transparent 51%),
+      radial-gradient(1px 1px at 25% 55%, rgba(255,255,255,.4) 50%, transparent 51%);
+    animation: drift 14s ease-in-out infinite alternate;
+  }
+  @keyframes drift { from{ transform: translateY(0)} to{ transform: translateY(-12px)} }
+
+  .wrap{
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 22px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .card-glass{
+    width: min(560px, 94vw);
+    background: rgba(255,255,255, .07);
+    border: 1px solid rgba(255,255,255, .14);
+    border-radius: 18px;
+    box-shadow: 0 20px 70px rgba(0,0,0,.45);
+    backdrop-filter: blur(12px);
+    padding: 26px;
+  }
+
+  .title{
+    margin: 0 0 18px 0;
+    font-weight: 900;
+    font-size: 18px;
+    color: #f8fafc;
+    text-align: center;
+  }
+
+  .form-label{
+    color: rgba(226,232,240,.9);
+    font-weight: 800;
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  .form-control{
+    background: rgba(15, 23, 42, .35);
+    border: 1px solid rgba(148, 163, 184, .18);
+    color: #e5e7eb;
+    border-radius: 14px;
+    padding: 12px 14px;
+  }
+  .form-control:focus{
+    background: rgba(15, 23, 42, .45);
+    border-color: rgba(255, 199, 0, .55);
+    box-shadow: 0 0 0 .2rem rgba(255, 199, 0, .12);
+    color: #fff;
+  }
+  .form-control::placeholder{ color: rgba(226,232,240,.45); }
+
+  /* ---- Custom Role Dropdown (theme-consistent) ---- */
+  .role-select{
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background: rgba(15, 23, 42, .35);
+    border: 1px solid rgba(148, 163, 184, .18);
+    color: #e5e7eb;
+    border-radius: 14px;
+    padding: 12px 44px 12px 14px; /* left space for arrow */
+    width: 100%;
+    outline: none;
+  }
+  .role-select:focus{
+    background: rgba(15, 23, 42, .45);
+    border-color: rgba(255, 199, 0, .55);
+    box-shadow: 0 0 0 .2rem rgba(255, 199, 0, .12);
+  }
+
+  .role-wrap{
+    position: relative;
+  }
+  .role-wrap:after{
+    content: "▾";
+    position: absolute;
+    left: 14px; /* RTL: icon on left feels better */
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(251, 191, 36, .9);
+    font-size: 14px;
+    pointer-events: none;
+  }
+
+  /* options styling (limited by browser, but helps in some) */
+  .role-select option{
+    background: #0b1220;
+    color: #e5e7eb;
+  }
+
+  .btn-main{
+    border: none;
+    border-radius: 14px;
+    padding: 12px 12px;
+    font-weight: 900;
+    background: linear-gradient(90deg, #fbbf24, #f59e0b);
+    color: #0b1220;
+    box-shadow: 0 10px 30px rgba(245, 158, 11, .18);
+  }
+  .btn-main:disabled{ opacity: .7; cursor: not-allowed; }
+
+  .error-box{
+    display: none;
+    margin-top: 12px;
+    background: rgba(239, 68, 68, .14);
+    border: 1px solid rgba(239, 68, 68, .26);
+    color: #fecaca;
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.8;
+  }
+
+  .mini-links{
+    display:flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+    font-size: 12px;
+  }
+  .mini-links a{
+    color: rgba(226,232,240,.75);
+    text-decoration: none;
+  }
+  .mini-links a:hover{ color: #fff; text-decoration: underline; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="stars"></div>
+
+<div class="wrap">
+  <div class="card-glass">
+    <h1 class="title">ثبت‌نام کاربر</h1>
+
+    <form id="registerForm" autocomplete="off">
+      <div class="mb-3">
+        <label class="form-label">نام کاربری</label>
+        <input id="username" class="form-control" type="text" placeholder="مثلاً expert1" required>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">ایمیل (اختیاری)</label>
+        <input id="email" class="form-control" type="email" placeholder="example@mail.com">
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">نقش</label>
+        <div class="role-wrap">
+          <select id="role" class="role-select" required>
+            <option value="manager">مدیر</option>
+            <option value="expert">کارشناس</option>
+            <option value="admin">ادمین</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mb-2">
+        <label class="form-label">رمز عبور</label>
+        <input id="password" class="form-control" type="password" placeholder="********" required>
+      </div>
+
+      <button id="btnRegister" class="btn btn-main w-100 mt-3" type="submit">ثبت‌نام</button>
+      <div id="errorBox" class="error-box"></div>
+
+      <div class="mini-links">
+        <a href="/ui/login/">ورود</a>
+        <a href="/ui/">بازگشت به پنل</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const form = document.getElementById("registerForm");
+  const btn = document.getElementById("btnRegister");
+  const errorBox = document.getElementById("errorBox");
+
+  function showError(msg){
+    errorBox.style.display = "block";
+    errorBox.textContent = msg;
+  }
+  function clearError(){
+    errorBox.style.display = "none";
+    errorBox.textContent = "";
+  }
+
+  const REGISTER_ENDPOINTS = [
+    "/api/users/register/",
+    "/api/users/register"
+  ];
+
+  async function postRegister(payload){
+    let lastError = null;
+
+    for (const url of REGISTER_ENDPOINTS){
+      try{
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.status === 404) continue;
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok){
+          lastError = data.detail || "ثبت‌نام ناموفق بود.";
+          return { ok: false, error: lastError };
+        }
+        return { ok: true, data };
+      }catch(e){
+        lastError = "خطا در ارتباط با سرور.";
+      }
+    }
+
+    return { ok: false, error: lastError || "آدرس ثبت‌نام پیدا نشد." };
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearError();
+
+    const username = document.getElementById("username").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const role = document.getElementById("role").value;
+    const password = document.getElementById("password").value;
+
+    const payload = { username, password, role };
+    if (email) payload.email = email;
+
+    btn.disabled = true;
+    btn.textContent = "در حال ثبت‌نام...";
+
+    const result = await postRegister(payload);
+
+    btn.disabled = false;
+    btn.textContent = "ثبت‌نام";
+
+    if (!result.ok){
+      showError(result.error);
+      return;
+    }
+
+    window.location.href = "/ui/login/";
+  });
+</script>
+{% endblock %}
