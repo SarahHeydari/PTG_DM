@@ -1,97 +1,138 @@
 {% extends "frontend/base.html" %}
+{% load static %}
 
-{% block title %}پروفایل{% endblock %}
+{% block title %}پروفایل | سامانه مدیریت بحران{% endblock %}
 
 {% block extra_css %}
 <style>
-  .wrap{
-    min-height: 80vh;
-    display:grid;
-    place-items:center;
-    color: rgba(255,255,255,.85);
+  .router-wrap{
+    min-height: 100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding: 32px 16px;
+    background:
+      radial-gradient(900px 450px at 75% 20%, rgba(245,158,11,.18), transparent 65%),
+      radial-gradient(900px 450px at 20% 80%, rgba(59,130,246,.12), transparent 60%),
+      linear-gradient(135deg, #0b1220 0%, #070a12 100%);
   }
-  .box{
-    width:min(520px, 94vw);
-    background: rgba(255,255,255,.06);
-    border:1px solid rgba(255,255,255,.14);
-    border-radius:18px;
-    padding: 18px 18px;
-    backdrop-filter: blur(12px);
-    box-shadow: 0 18px 60px rgba(0,0,0,.35);
-    text-align:center;
+  .router-card{
+    width: min(520px, 95vw);
+    border-radius: 18px;
+    background: rgba(17,24,39,.55);
+    border: 1px solid rgba(148,163,184,.18);
+    box-shadow: 0 20px 60px rgba(0,0,0,.45);
+    backdrop-filter: blur(14px);
+    padding: 22px;
+    text-align: right;
+  }
+  .router-title{
+    color:#fff;
+    font-weight: 800;
+    margin:0 0 8px 0;
+    font-size: 18px;
+  }
+  .router-sub{
+    color: rgba(226,232,240,.75);
+    margin:0;
+    font-size: 13px;
+    line-height: 1.9;
+  }
+  .router-spinner{
+    margin-top: 14px;
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    border: 4px solid rgba(148,163,184,.25);
+    border-top-color: rgba(251,191,36,.95);
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .router-msg{
+    margin-top: 12px;
+    color: rgba(226,232,240,.8);
+    font-size: 13px;
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="wrap">
-  <div class="box">
-    <h3 style="margin:0 0 10px 0; font-weight:900;">در حال ورود به پروفایل…</h3>
-    <div style="opacity:.7; font-size:13px;">لطفاً چند لحظه صبر کنید</div>
+<div class="router-wrap">
+  <div class="router-card">
+    <div class="router-title">در حال انتقال به پروفایل…</div>
+    <p class="router-sub">اطلاعات حساب شما بررسی می‌شود و به صفحه مناسب هدایت خواهید شد.</p>
+    <div class="router-spinner" aria-label="loading"></div>
+    <div class="router-msg" id="routerMsg"></div>
   </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  function getToken(){
-    return localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
-  }
-  function clearToken(){
-    localStorage.removeItem("access_token");
-    sessionStorage.removeItem("access_token");
-    localStorage.removeItem("user_username");
-    localStorage.removeItem("user_role");
+  const msgEl = document.getElementById("routerMsg");
+
+  function getToken() {
+    // کلیدهای رایج (هر کدوم بود می‌گیریم)
+    return localStorage.getItem("access_token")
+        || localStorage.getItem("token")
+        || localStorage.getItem("jwt")
+        || "";
   }
 
-  function normalizeRole(roleRaw){
-    const r = (roleRaw || "").toString().toLowerCase().trim();
-    if (r === "مدیر" || r === "manager") return "manager";
-    if (r === "کارشناس" || r === "expert") return "expert";
-    if (r === "ادمین" || r === "admin") return "admin";
-    return r || "unknown";
+  function go(url){
+    window.location.replace(url);
   }
 
-  async function go(){
+  async function run(){
     const token = getToken();
-    if (!token){
-      window.location.href = "/ui/login/";
+    if(!token){
+      go("/ui/login/");
       return;
     }
 
     try{
       const res = await fetch("/api/users/myprofile/", {
         method: "GET",
-        headers: { "Authorization": `Bearer ${token}` }
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        }
       });
 
-      if (res.status === 401 || res.status === 403){
-        clearToken();
-        window.location.href = "/ui/login/";
+      if(res.status === 401 || res.status === 403){
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("token");
+        localStorage.removeItem("jwt");
+        go("/ui/login/");
         return;
       }
 
       const data = await res.json().catch(() => ({}));
-      const username = data.username || data.user_name || "کاربر";
-      const role = normalizeRole(data.role || data.Role);
 
-      localStorage.setItem("user_username", username);
-      localStorage.setItem("user_role", role);
+      // نقش ممکنه اینجا باشه یا داخل user
+      const role = (data.role) || (data.user && data.user.role) || "";
+      const userObj = data.user || data;
 
-      if (role === "manager") window.location.href = "/ui/profile/manager/";
-      else if (role === "expert") window.location.href = "/ui/profile/expert/";
-      else if (role === "admin") window.location.href = "/ui/profile/admin/";
-      else window.location.href = "/ui/"; // fallback
-    }catch(e){
-      // اگر API در دسترس نبود، fallback
-      const role = normalizeRole(localStorage.getItem("user_role"));
-      if (role === "manager") window.location.href = "/ui/profile/manager/";
-      else if (role === "expert") window.location.href = "/ui/profile/expert/";
-      else if (role === "admin") window.location.href = "/ui/profile/admin/";
-      else window.location.href = "/ui/";
+      // برای استفاده‌ی بعدی (نمایش نام کاربر بدون ریکوئست اضافه)
+      try{
+        localStorage.setItem("dm_user", JSON.stringify(userObj || {}));
+      }catch(e){}
+
+      if(role === "manager"){
+        go("/ui/profile/manager/");
+      } else if(role === "admin"){
+        go("/ui/profile/admin/");
+      } else {
+        go("/ui/profile/expert/");
+      }
+
+    }catch(err){
+      msgEl.innerText = "خطای شبکه/سرور. دوباره تلاش کنید.";
+      // اگر خواستی: برگرده داشبورد
+      // setTimeout(() => go("/ui/"), 1000);
     }
   }
 
-  go();
+  run();
 </script>
 {% endblock %}

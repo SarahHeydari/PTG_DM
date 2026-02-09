@@ -245,19 +245,19 @@
         <!-- Flood -->
         <div class="dm-card">
           <div class="head">سیل</div>
-          <button class="btn-enter" type="button" onclick="window.location.href='/ui/flood/';">ورود</button>
+          <button class="btn-enter" type="button" onclick="openSubsystem('flood')">ورود</button>
         </div>
 
         <!-- Earthquake -->
         <div class="dm-card">
           <div class="head">زلزله</div>
-          <button class="btn-enter" type="button" onclick="window.location.href='/ui/earthquake/';">ورود</button>
+          <button class="btn-enter" type="button" onclick="openSubsystem('earthquake')">ورود</button>
         </div>
 
         <!-- Fire -->
         <div class="dm-card">
           <div class="head">آتش‌سوزی</div>
-          <button class="btn-enter" type="button" onclick="window.location.href='/ui/fire/';">ورود</button>
+          <button class="btn-enter" type="button" onclick="openSubsystem('fire')">ورود</button>
         </div>
       </div>
 
@@ -266,18 +266,41 @@
   </div>
 
 </div>
+
+<!-- ✅ NEW: small toast for demo/test messages -->
+<div id="dmToast" style="
+  position:fixed; left:18px; bottom:18px; z-index:9999;
+  padding:12px 14px; border-radius:14px;
+  background: rgba(15,23,42,.92);
+  border:1px solid rgba(255,255,255,.12);
+  color:#fff; opacity:0; transform:translateY(12px);
+  transition:.2s; max-width:340px; line-height:1.8;
+"></div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
   function getToken(){
-    return localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
+    return (
+      localStorage.getItem("access_token") ||
+      localStorage.getItem("access") ||
+      localStorage.getItem("token") ||
+      localStorage.getItem("jwt") ||
+      sessionStorage.getItem("access_token") ||
+      ""
+    );
   }
+
   function clearToken(){
     localStorage.removeItem("access_token");
     sessionStorage.removeItem("access_token");
+    localStorage.removeItem("access");
+    localStorage.removeItem("token");
+    localStorage.removeItem("jwt");
+
     localStorage.removeItem("user_username");
     localStorage.removeItem("user_role");
+    localStorage.removeItem("dm_user");
   }
 
   function setUserUI(username, role){
@@ -295,7 +318,33 @@
     if (a) a.textContent = String(letter).toUpperCase();
   }
 
-  async function loadUser(){
+  /* ✅ NEW: toast (doesn't affect old UI) */
+  function toast(msg){
+    const t = document.getElementById("dmToast");
+    if(!t) return;
+    t.textContent = msg;
+    t.style.opacity = "1";
+    t.style.transform = "translateY(0)";
+    setTimeout(()=>{ t.style.opacity="0"; t.style.transform="translateY(12px)"; }, 2200);
+  }
+
+  /* ✅ NEW: keep old behavior: only fire redirects, others show demo message */
+  function openSubsystem(name){
+    if(name === "fire"){
+      window.location.href = "/ui/fire/";
+      return;
+    }
+    if(name === "flood"){
+      toast("زیرسامانه «سیل» هنوز آماده نیست (دمو).");
+      return;
+    }
+    if(name === "earthquake"){
+      toast("زیرسامانه «زلزله» هنوز آماده نیست (دمو).");
+      return;
+    }
+  }
+
+  function loadUser(){
     // 1) try API
     const token = getToken();
     if (!token){
@@ -304,33 +353,36 @@
       return;
     }
 
-    try{
-      const res = await fetch("/api/users/myprofile/", {
-        method: "GET",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
+    (async ()=>{
+      try{
+        const res = await fetch("/api/users/myprofile/", {
+          method: "GET",
+          headers: { "Authorization": `Bearer ${token}` }
+        });
 
-      if (res.status === 401 || res.status === 403){
-        clearToken();
-        window.location.href = "/ui/login/";
+        if (res.status === 401 || res.status === 403){
+          clearToken();
+          window.location.href = "/ui/login/";
+          return;
+        }
+
+        const data = await res.json().catch(() => ({}));
+        const username = data.username || data.user_name || localStorage.getItem("user_username") || "کاربر";
+        const role = (data.role || data.Role || localStorage.getItem("user_role") || "—");
+
+        localStorage.setItem("user_username", username);
+        localStorage.setItem("user_role", role);
+        try{ localStorage.setItem("dm_user", JSON.stringify(data)); }catch(e){}
+
+        setUserUI(username, role);
         return;
+      }catch(e){
+        // 2) fallback to localStorage
+        const username = localStorage.getItem("user_username") || "کاربر";
+        const role = localStorage.getItem("user_role") || "—";
+        setUserUI(username, role);
       }
-
-      const data = await res.json().catch(() => ({}));
-      const username = data.username || data.user_name || localStorage.getItem("user_username") || "کاربر";
-      const role = (data.role || data.Role || localStorage.getItem("user_role") || "—");
-
-      localStorage.setItem("user_username", username);
-      localStorage.setItem("user_role", role);
-
-      setUserUI(username, role);
-      return;
-    }catch(e){
-      // 2) fallback to localStorage
-      const username = localStorage.getItem("user_username") || "کاربر";
-      const role = localStorage.getItem("user_role") || "—";
-      setUserUI(username, role);
-    }
+    })();
   }
 
   document.getElementById("btnLogout")?.addEventListener("click", () => {

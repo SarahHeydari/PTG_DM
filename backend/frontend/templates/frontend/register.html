@@ -1,277 +1,246 @@
 {% extends "frontend/base.html" %}
+{% load static %}
 
 {% block title %}ثبت‌نام | سامانه مدیریت بحران{% endblock %}
 
 {% block extra_css %}
 <style>
-  body{
+  /* Page background like login/dashboard */
+  .dm-auth-wrap{
     min-height: 100vh;
-    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
     background:
-      radial-gradient(1200px 600px at 75% 25%, rgba(255, 199, 0, .14), transparent 60%),
-      radial-gradient(900px 500px at 25% 70%, rgba(59, 130, 246, .12), transparent 60%),
-      #0b1220;
-    color: #e5e7eb;
-    overflow: hidden;
+      radial-gradient(900px 450px at 75% 20%, rgba(245,158,11,.18), transparent 65%),
+      radial-gradient(900px 450px at 20% 80%, rgba(59,130,246,.12), transparent 60%),
+      linear-gradient(135deg, #0b1220 0%, #070a12 100%);
   }
 
-  .stars{
-    position: fixed; inset: 0; pointer-events: none; opacity: .55;
-    background-image:
-      radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,.55) 50%, transparent 51%),
-      radial-gradient(1px 1px at 40% 80%, rgba(255,255,255,.45) 50%, transparent 51%),
-      radial-gradient(1px 1px at 70% 30%, rgba(255,255,255,.5) 50%, transparent 51%),
-      radial-gradient(1px 1px at 85% 60%, rgba(255,255,255,.35) 50%, transparent 51%),
-      radial-gradient(1px 1px at 25% 55%, rgba(255,255,255,.4) 50%, transparent 51%);
-    animation: drift 14s ease-in-out infinite alternate;
-  }
-  @keyframes drift { from{ transform: translateY(0)} to{ transform: translateY(-12px)} }
-
-  .wrap{
-    min-height: 100vh;
-    display: grid;
-    place-items: center;
-    padding: 22px;
-    position: relative;
-    z-index: 2;
-  }
-
-  .card-glass{
-    width: min(560px, 94vw);
-    background: rgba(255,255,255, .07);
-    border: 1px solid rgba(255,255,255, .14);
+  .dm-card{
+    width: min(520px, 95vw);
     border-radius: 18px;
-    box-shadow: 0 20px 70px rgba(0,0,0,.45);
-    backdrop-filter: blur(12px);
-    padding: 26px;
+    background: rgba(17,24,39,.55);
+    border: 1px solid rgba(148,163,184,.18);
+    box-shadow: 0 20px 60px rgba(0,0,0,.45);
+    backdrop-filter: blur(14px);
+    padding: 24px 22px;
   }
 
-  .title{
-    margin: 0 0 18px 0;
-    font-weight: 900;
-    font-size: 18px;
-    color: #f8fafc;
-    text-align: center;
-  }
-
-  .form-label{
-    color: rgba(226,232,240,.9);
-    font-weight: 800;
-    font-size: 13px;
-    margin-bottom: 8px;
-  }
-
-  .form-control{
-    background: rgba(15, 23, 42, .35);
-    border: 1px solid rgba(148, 163, 184, .18);
-    color: #e5e7eb;
-    border-radius: 14px;
-    padding: 12px 14px;
-  }
-  .form-control:focus{
-    background: rgba(15, 23, 42, .45);
-    border-color: rgba(255, 199, 0, .55);
-    box-shadow: 0 0 0 .2rem rgba(255, 199, 0, .12);
+  .dm-title{
     color: #fff;
+    font-weight: 800;
+    margin: 0 0 6px 0;
+    font-size: 20px;
+    letter-spacing: .2px;
   }
-  .form-control::placeholder{ color: rgba(226,232,240,.45); }
 
-  /* ---- Custom Role Dropdown (theme-consistent) ---- */
-  .role-select{
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    background: rgba(15, 23, 42, .35);
-    border: 1px solid rgba(148, 163, 184, .18);
-    color: #e5e7eb;
-    border-radius: 14px;
-    padding: 12px 44px 12px 14px; /* left space for arrow */
+  .dm-sub{
+    color: rgba(226,232,240,.75);
+    margin-bottom: 18px;
+    font-size: 13px;
+  }
+
+  .dm-label{
+    color: rgba(226,232,240,.85);
+    font-size: 13px;
+    margin: 12px 0 8px;
+  }
+
+  .dm-input, .dm-select{
+    background: rgba(2,6,23,.35) !important;
+    border: 1px solid rgba(148,163,184,.22) !important;
+    color: #e5e7eb !important;
+    border-radius: 12px !important;
+    padding: 12px 14px !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  .dm-input::placeholder{ color: rgba(226,232,240,.45) !important; }
+
+  .dm-input:focus, .dm-select:focus{
+    border-color: rgba(251,191,36,.75) !important;
+    box-shadow: 0 0 0 4px rgba(251,191,36,.12) !important;
+  }
+
+  /* dropdown arrow in RTL */
+  .dm-select{
+    cursor: pointer;
+  }
+
+  .dm-btn{
     width: 100%;
-    outline: none;
-  }
-  .role-select:focus{
-    background: rgba(15, 23, 42, .45);
-    border-color: rgba(255, 199, 0, .55);
-    box-shadow: 0 0 0 .2rem rgba(255, 199, 0, .12);
-  }
-
-  .role-wrap{
-    position: relative;
-  }
-  .role-wrap:after{
-    content: "▾";
-    position: absolute;
-    left: 14px; /* RTL: icon on left feels better */
-    top: 50%;
-    transform: translateY(-50%);
-    color: rgba(251, 191, 36, .9);
-    font-size: 14px;
-    pointer-events: none;
-  }
-
-  /* options styling (limited by browser, but helps in some) */
-  .role-select option{
-    background: #0b1220;
-    color: #e5e7eb;
-  }
-
-  .btn-main{
-    border: none;
-    border-radius: 14px;
-    padding: 12px 12px;
-    font-weight: 900;
-    background: linear-gradient(90deg, #fbbf24, #f59e0b);
-    color: #0b1220;
-    box-shadow: 0 10px 30px rgba(245, 158, 11, .18);
-  }
-  .btn-main:disabled{ opacity: .7; cursor: not-allowed; }
-
-  .error-box{
-    display: none;
-    margin-top: 12px;
-    background: rgba(239, 68, 68, .14);
-    border: 1px solid rgba(239, 68, 68, .26);
-    color: #fecaca;
-    padding: 10px 12px;
+    border: 0;
     border-radius: 12px;
+    padding: 12px 14px;
+    font-weight: 800;
+    background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+    color: #111827;
+    transition: transform .12s ease, filter .12s ease;
+    margin-top: 18px;
+  }
+  .dm-btn:hover{ filter: brightness(1.05); transform: translateY(-1px); }
+  .dm-btn:active{ transform: translateY(0px); }
+
+  .dm-row{
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .dm-footer{
+    margin-top: 14px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    color: rgba(226,232,240,.7);
+  }
+  .dm-footer a{
+    color: rgba(251,191,36,.95);
+    text-decoration: none;
+  }
+  .dm-footer a:hover{ text-decoration: underline; }
+
+  .dm-alert{
+    display:none;
+    margin-top: 14px;
+    border-radius: 12px;
+    padding: 10px 12px;
+    border: 1px solid rgba(251,191,36,.35);
+    background: rgba(251,191,36,.12);
+    color: #fde68a;
     font-size: 13px;
     line-height: 1.8;
   }
 
-  .mini-links{
-    display:flex;
-    justify-content: space-between;
-    gap: 10px;
-    margin-top: 12px;
-    font-size: 12px;
+  .dm-alert.error{
+    border-color: rgba(244,63,94,.35);
+    background: rgba(244,63,94,.10);
+    color: rgba(254,202,202,.95);
   }
-  .mini-links a{
-    color: rgba(226,232,240,.75);
-    text-decoration: none;
+
+  /* Optional: make native option list darker in supported browsers */
+  select.dm-select option{
+    background: #0b1220;
+    color: #e5e7eb;
   }
-  .mini-links a:hover{ color: #fff; text-decoration: underline; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="stars"></div>
+<div class="dm-auth-wrap">
+  <div class="dm-card">
 
-<div class="wrap">
-  <div class="card-glass">
-    <h1 class="title">ثبت‌نام کاربر</h1>
+    <h1 class="dm-title">ثبت‌نام کاربر</h1>
+    <div class="dm-sub">برای ساخت حساب، اطلاعات زیر را وارد کنید.</div>
 
     <form id="registerForm" autocomplete="off">
-      <div class="mb-3">
-        <label class="form-label">نام کاربری</label>
-        <input id="username" class="form-control" type="text" placeholder="مثلاً expert1" required>
-      </div>
+      <div class="dm-row">
 
-      <div class="mb-3">
-        <label class="form-label">ایمیل (اختیاری)</label>
-        <input id="email" class="form-control" type="email" placeholder="example@mail.com">
-      </div>
+        <div>
+          <div class="dm-label">نام کاربری</div>
+          <input class="form-control dm-input" type="text" id="username" placeholder="مثلاً expert1" required />
+        </div>
 
-      <div class="mb-3">
-        <label class="form-label">نقش</label>
-        <div class="role-wrap">
-          <select id="role" class="role-select" required>
+        <div>
+          <div class="dm-label">ایمیل (اختیاری)</div>
+          <input class="form-control dm-input" type="email" id="email" placeholder="example@mail.com" />
+        </div>
+
+        <div>
+          <div class="dm-label">نقش</div>
+          <select class="form-select dm-select" id="role" required>
             <option value="manager">مدیر</option>
             <option value="expert">کارشناس</option>
             <option value="admin">ادمین</option>
           </select>
         </div>
+
+        <div>
+          <div class="dm-label">رمز عبور</div>
+          <input class="form-control dm-input" type="password" id="password" placeholder="********" required />
+        </div>
+
       </div>
 
-      <div class="mb-2">
-        <label class="form-label">رمز عبور</label>
-        <input id="password" class="form-control" type="password" placeholder="********" required>
-      </div>
+      <button class="dm-btn" type="submit" id="btnRegister">ثبت‌نام</button>
 
-      <button id="btnRegister" class="btn btn-main w-100 mt-3" type="submit">ثبت‌نام</button>
-      <div id="errorBox" class="error-box"></div>
+      <div class="dm-alert" id="msgBox"></div>
 
-      <div class="mini-links">
+      <div class="dm-footer">
         <a href="/ui/login/">ورود</a>
         <a href="/ui/">بازگشت به پنل</a>
       </div>
     </form>
+
   </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  const form = document.getElementById("registerForm");
-  const btn = document.getElementById("btnRegister");
-  const errorBox = document.getElementById("errorBox");
+  const msgBox = document.getElementById("msgBox");
 
-  function showError(msg){
-    errorBox.style.display = "block";
-    errorBox.textContent = msg;
-  }
-  function clearError(){
-    errorBox.style.display = "none";
-    errorBox.textContent = "";
+  function showMsg(text, type="info"){
+    msgBox.style.display = "block";
+    msgBox.classList.remove("error");
+    if(type === "error") msgBox.classList.add("error");
+    msgBox.innerText = text;
   }
 
-  const REGISTER_ENDPOINTS = [
-    "/api/users/register/",
-    "/api/users/register"
-  ];
-
-  async function postRegister(payload){
-    let lastError = null;
-
-    for (const url of REGISTER_ENDPOINTS){
-      try{
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        if (res.status === 404) continue;
-
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok){
-          lastError = data.detail || "ثبت‌نام ناموفق بود.";
-          return { ok: false, error: lastError };
-        }
-        return { ok: true, data };
-      }catch(e){
-        lastError = "خطا در ارتباط با سرور.";
-      }
-    }
-
-    return { ok: false, error: lastError || "آدرس ثبت‌نام پیدا نشد." };
+  function clearMsg(){
+    msgBox.style.display = "none";
+    msgBox.innerText = "";
+    msgBox.classList.remove("error");
   }
 
-  form.addEventListener("submit", async (e) => {
+  document.getElementById("registerForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    clearError();
+    clearMsg();
 
-    const username = document.getElementById("username").value.trim();
-    const email = document.getElementById("email").value.trim();
-    const role = document.getElementById("role").value;
-    const password = document.getElementById("password").value;
-
-    const payload = { username, password, role };
-    if (email) payload.email = email;
-
+    const btn = document.getElementById("btnRegister");
     btn.disabled = true;
-    btn.textContent = "در حال ثبت‌نام...";
 
-    const result = await postRegister(payload);
+    const payload = {
+      username: document.getElementById("username").value.trim(),
+      password: document.getElementById("password").value,
+      role: document.getElementById("role").value
+    };
 
-    btn.disabled = false;
-    btn.textContent = "ثبت‌نام";
+    const email = document.getElementById("email").value.trim();
+    if(email) payload.email = email;
 
-    if (!result.ok){
-      showError(result.error);
-      return;
+    try {
+      const res = await fetch("/api/users/register/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if(!res.ok){
+        // تلاش برای نمایش پیام‌های DRF
+        const detail =
+          data.detail ||
+          (typeof data === "string" ? data : null) ||
+          Object.values(data || {}).flat().join(" | ") ||
+          "ثبت‌نام ناموفق بود.";
+        showMsg(detail, "error");
+        btn.disabled = false;
+        return;
+      }
+
+      showMsg("ثبت‌نام با موفقیت انجام شد. در حال انتقال به صفحه ورود...");
+      setTimeout(() => window.location.href = "/ui/login/", 800);
+
+    } catch (err){
+      showMsg("خطای شبکه یا سرور. دوباره تلاش کنید.", "error");
+      btn.disabled = false;
     }
-
-    window.location.href = "/ui/login/";
   });
 </script>
 {% endblock %}

@@ -1,72 +1,196 @@
 {% extends "frontend/base.html" %}
+{% load static %}
 
-{% block title %}پروفایل کارشناس{% endblock %}
+{% block title %}پروفایل کارشناس | سامانه مدیریت بحران{% endblock %}
 
 {% block extra_css %}
 <style>
-  .page{ min-height:100vh; padding:24px 28px; }
+  .page{
+    min-height: 100vh;
+    padding: 24px 28px;
+    background:
+      radial-gradient(900px 450px at 75% 20%, rgba(245,158,11,.18), transparent 65%),
+      radial-gradient(900px 450px at 20% 80%, rgba(59,130,246,.12), transparent 60%),
+      linear-gradient(135deg, #0b1220 0%, #070a12 100%);
+  }
+
   .topbar{
     display:flex;
     justify-content: space-between;
     align-items:center;
     gap: 16px;
+    margin-bottom: 18px;
   }
-  .titlebox{ display:flex; align-items:center; gap:10px; }
-  .titlebox h1{ margin:0; color:#fff; font-weight:900; font-size:22px; }
+
+  /* RIGHT title */
+  .titlebox{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+  }
+  .titlebox h1{
+    margin:0;
+    color:#fff;
+    font-weight: 900;
+    font-size: 22px;
+  }
   .titlebox .pipe{
-    width:3px; height:22px; border-radius:999px;
+    width: 3px;
+    height: 22px;
     background: rgba(251,191,36,.95);
+    border-radius: 999px;
     box-shadow: 0 0 20px rgba(251,191,36,.25);
   }
 
-  .user-area{ display:flex; align-items:center; gap:10px; }
+  /* LEFT user + logout */
+  .user-area{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+  }
   .user-chip{
-    display:flex; align-items:center; gap:10px;
-    padding:10px 12px; border-radius:999px;
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 999px;
+    text-decoration:none;
     background: rgba(255,255,255,.08);
-    border:1px solid rgba(255,255,255,.14);
-    color:#fff; text-decoration:none;
+    border: 1px solid rgba(255,255,255,.14);
+    color:#fff;
+    transition:.15s ease;
+  }
+  .user-chip:hover{
+    transform: translateY(-1px);
+    background: rgba(255,255,255,.12);
+    border-color: rgba(251,191,36,.35);
   }
   .user-avatar{
-    width:32px; height:32px; border-radius:999px;
+    width: 32px; height: 32px;
+    border-radius: 999px;
     display:grid; place-items:center;
     font-weight:900;
     background: rgba(251,191,36,.18);
     border: 1px solid rgba(251,191,36,.35);
-    color:#fbbf24;
+    color: #fbbf24;
   }
   .user-meta{ line-height:1.1; }
   .user-name{ font-weight:900; font-size:13px; }
   .user-role{ font-size:11px; opacity:.7; margin-top:2px; }
+
   .btn-logout{
-    border:none; padding:10px 12px; border-radius:999px;
-    font-weight:900;
+    border:none;
+    padding: 10px 12px;
+    border-radius: 999px;
+    font-weight: 900;
     background: rgba(239,68,68,.18);
     border: 1px solid rgba(239,68,68,.28);
     color:#fecaca;
+    transition:.15s ease;
+  }
+  .btn-logout:hover{ transform: translateY(-1px); background: rgba(239,68,68,.24); }
+
+  .grid{
+    display:grid;
+    grid-template-columns: 1.05fr .95fr;
+    gap: 16px;
+  }
+  @media (max-width: 1100px){
+    .grid{ grid-template-columns: 1fr; }
   }
 
   .cardx{
-    margin-top: 26px;
-    width:min(760px, 96vw);
     background: rgba(255,255,255,.06);
     border:1px solid rgba(255,255,255,.14);
     border-radius: 18px;
     padding: 16px;
     backdrop-filter: blur(12px);
     box-shadow: 0 18px 60px rgba(0,0,0,.35);
+    color: rgba(226,232,240,.95);
   }
-  .cardx h3{ margin:0 0 12px 0; font-weight:900; color:#fff; font-size:16px; }
+  .cardx h3{
+    margin:0 0 10px 0;
+    font-weight: 900;
+    color:#fff;
+    font-size: 16px;
+  }
+  .muted{ color: rgba(226,232,240,.72); font-size: 13px; }
 
   .kv{
     display:grid;
     grid-template-columns: 140px 1fr;
     gap: 10px;
     font-size: 13px;
-    color: rgba(226,232,240,.92);
   }
   .kv .k{ opacity:.65; }
-  .kv .v{ font-weight:700; }
+  .kv .v{ font-weight:800; }
+
+  .btnx{
+    border-radius: 12px;
+    padding: 10px 12px;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.06);
+    color: #fff;
+    transition: .12s ease;
+  }
+  .btnx:hover{ transform: translateY(-1px); background: rgba(255,255,255,.09); }
+  .btn-gold{
+    border:none;
+    background: linear-gradient(90deg, #fbbf24, #f59e0b);
+    color:#0b1220;
+    font-weight: 900;
+    box-shadow: 0 10px 30px rgba(245,158,11,.18);
+  }
+
+  .form-control, .form-select{
+    background: rgba(2,6,23,.35) !important;
+    border: 1px solid rgba(148,163,184,.22) !important;
+    color: #e5e7eb !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+  }
+  .form-control:focus, .form-select:focus{
+    border-color: rgba(251,191,36,.75) !important;
+    box-shadow: 0 0 0 4px rgba(251,191,36,.12) !important;
+  }
+
+  .tablex{ width:100%; border-collapse:collapse; font-size:14px; }
+  .tablex th,.tablex td{ padding:10px; border-bottom:1px solid rgba(255,255,255,.08); vertical-align: top; }
+
+  .panel{
+    margin-top:10px;
+    padding:10px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.10);
+    background: rgba(0,0,0,.18);
+    display:none;
+  }
+
+  .badge-access{
+    padding:4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.06);
+    display:inline-block;
+  }
+  .badge-r{ border-color: rgba(59,130,246,.35); color:#bfdbfe; }
+  .badge-w{ border-color: rgba(34,197,94,.35); color:#bbf7d0; }
+
+  .dm-toast{
+    position:fixed; left:18px; bottom:18px;
+    padding:12px 14px; border-radius:14px;
+    background: rgba(15,23,42,.92);
+    border:1px solid rgba(255,255,255,.12);
+    color:#fff; z-index:9999;
+    opacity:0; transform:translateY(12px);
+    transition:.2s;
+    max-width: 340px;
+    line-height: 1.8;
+  }
+  .dm-toast.info{ border-color: rgba(251,191,36,.25); }
+  .dm-toast.warn{ border-color: rgba(245,158,11,.35); }
+  .dm-toast.danger{ border-color: rgba(239,68,68,.35); }
 </style>
 {% endblock %}
 
@@ -74,13 +198,14 @@
 <div class="page">
 
   <div class="topbar">
+    <!-- RIGHT -->
     <div class="titlebox">
       <div class="pipe"></div>
       <h1>پروفایل کارشناس</h1>
     </div>
 
+    <!-- LEFT -->
     <div class="user-area">
-      <button class="btn-logout" id="btnLogout" type="button">خروج</button>
 
       <a class="user-chip" href="/ui/" title="بازگشت به پنل">
         <div class="user-avatar" id="ui-avatar">U</div>
@@ -89,76 +214,307 @@
           <div class="user-role" id="ui-role">—</div>
         </div>
       </a>
+        <button class="btn-logout" id="btnLogout" type="button">خروج</button>
+
     </div>
   </div>
 
-  <div class="cardx">
-    <h3>اطلاعات حساب</h3>
-    <div class="kv">
-      <div class="k">نام کاربری</div><div class="v" id="p_username">—</div>
-      <div class="k">نقش</div><div class="v" id="p_role">—</div>
-      <div class="k">ایمیل</div><div class="v" id="p_email">—</div>
-      <div class="k">تاریخ عضویت</div><div class="v" id="p_joined">—</div>
-      <div class="k">آخرین ورود</div><div class="v" id="p_last">—</div>
-    </div>
-  </div>
+  <div class="grid">
 
+    <!-- Account -->
+    <div class="cardx">
+      <h3>اطلاعات حساب</h3>
+      <hr style="border-color:rgba(255,255,255,.08)">
+      <div class="kv">
+        <div class="k">شناسه</div><div class="v" id="p_id">—</div>
+        <div class="k">نام کاربری</div><div class="v" id="p_username">—</div>
+        <div class="k">نقش</div><div class="v" id="p_role">—</div>
+        <div class="k">ایمیل</div><div class="v" id="p_email">—</div>
+        <div class="k">تاریخ عضویت</div><div class="v" id="p_joined">—</div>
+        <div class="k">آخرین ورود</div><div class="v" id="p_last">—</div>
+      </div>
+    </div>
+
+    <!-- Password Update -->
+    <div class="cardx">
+      <h3>تغییر رمز عبور</h3>
+      <hr style="border-color:rgba(255,255,255,.08)">
+      <div class="mb-2">
+        <label class="muted">رمز فعلی</label>
+        <input id="oldPass" class="form-control" type="password" placeholder="رمز فعلی">
+      </div>
+      <div class="mb-2">
+        <label class="muted">رمز جدید</label>
+        <input id="newPass" class="form-control" type="password" placeholder="رمز جدید">
+      </div>
+      <div class="mb-3">
+        <label class="muted">تکرار رمز جدید</label>
+        <input id="newPass2" class="form-control" type="password" placeholder="تکرار رمز جدید">
+      </div>
+      <button class="btnx btn-gold w-100" id="btnChangePass">ثبت تغییرات</button>
+    </div>
+
+    <!-- My Groups -->
+    <div class="cardx" style="grid-column:1/-1;">
+      <h3>گروه‌های من</h3>
+      <hr style="border-color:rgba(255,255,255,.08)">
+      <div id="groupsBox" class="muted">در حال دریافت گروه‌ها...</div>
+    </div>
+
+  </div>
 </div>
+
+<div id="toast" class="dm-toast"></div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  function getToken(){
-    return localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
+  /* ========= Helpers ========= */
+  const toastEl = document.getElementById("toast");
+
+  function toast(msg, type="info"){
+    toastEl.className = "dm-toast " + type;
+    toastEl.textContent = msg;
+    toastEl.style.opacity = "1";
+    toastEl.style.transform = "translateY(0)";
+    setTimeout(() => {
+      toastEl.style.opacity = "0";
+      toastEl.style.transform = "translateY(12px)";
+    }, 2400);
   }
-  function clearToken(){
+
+  function getToken(){
+    return localStorage.getItem("access_token")
+        || localStorage.getItem("access")
+        || localStorage.getItem("token")
+        || "";
+  }
+
+  function clearAuth(){
     localStorage.removeItem("access_token");
-    sessionStorage.removeItem("access_token");
-    localStorage.removeItem("user_username");
-    localStorage.removeItem("user_role");
+    localStorage.removeItem("access");
+    localStorage.removeItem("token");
+    localStorage.removeItem("dm_user");
   }
 
   function setHeader(username, role){
     document.getElementById("ui-username").textContent = username || "کاربر";
     document.getElementById("ui-role").textContent = role || "—";
-    const letter = (username && username.length) ? username[0] : "U";
-    document.getElementById("ui-avatar").textContent = String(letter).toUpperCase();
+    document.getElementById("ui-avatar").textContent = (username?.[0] || "U").toUpperCase();
   }
 
-  async function loadProfile(){
+  async function apiTry(urls, options){
     const token = getToken();
-    if(!token){ window.location.href="/ui/login/"; return; }
+    const headers = Object.assign({}, options?.headers || {});
+    headers["Content-Type"] = headers["Content-Type"] || "application/json";
+    if (token) headers["Authorization"] = "Bearer " + token;
 
-    const res = await fetch("/api/users/myprofile/", {
-      headers: { "Authorization": `Bearer ${token}` }
-    });
+    let lastErr = null;
 
-    if(res.status === 401 || res.status === 403){
-      clearToken();
-      window.location.href="/ui/login/";
+    for (const url of urls){
+      try{
+        const res = await fetch(url, { ...options, headers });
+
+        if (res.status === 404) continue;
+
+        if (res.status === 401){
+          toast("جلسه شما منقضی شده. دوباره وارد شوید.", "warn");
+          clearAuth();
+          setTimeout(()=>window.location.href="/ui/login/", 700);
+          throw new Error("401");
+        }
+
+        if (res.status === 403){
+          const data = await res.json().catch(()=>({}));
+          toast(data.detail || "شما دسترسی انجام این عملیات را ندارید.", "danger");
+          throw new Error("403");
+        }
+
+        return res;
+      }catch(e){
+        lastErr = e;
+      }
+    }
+
+    throw lastErr || new Error("No endpoint matched");
+  }
+
+  function safeGroupName(g){
+    return g.name || g.group_name || g.groupName || ("Group#" + (g.id ?? ""));
+  }
+  function safeAccess(g){
+    return (g.access_level || g.access || g.permission || "").toLowerCase();
+  }
+  function badgeAccess(acc){
+    return acc === "write"
+      ? `<span class="badge-access badge-w">خواندن/نوشتن</span>`
+      : `<span class="badge-access badge-r">فقط خواندن</span>`;
+  }
+
+  /* ========= Endpoint Candidates ========= */
+  const EP = {
+    myprofile: ["/api/users/myprofile/", "/api/users/profile/my/", "/api/users/me/"],
+    groups:    ["/api/users/groups/", "/api/users/access-groups/", "/api/users/group/"],
+    groupMembers: (gid) => [
+      `/api/users/groups/${gid}/members/`,
+      `/api/users/access-groups/${gid}/members/`,
+      `/api/users/groups/${gid}/users/`,
+    ],
+    passwordUpdate: ["/api/users/password/update/", "/api/users/password/change/"],
+  };
+
+  let GROUPS = [];
+
+  /* ========= Load Profile + Guard Expert ========= */
+  async function loadMe(){
+    const res = await apiTry(EP.myprofile, { method:"GET" });
+    const me = await res.json().catch(()=>({}));
+
+    try{ localStorage.setItem("dm_user", JSON.stringify(me)); }catch(e){}
+
+    const role = (me.role || "").toLowerCase();
+    if (role !== "expert"){
+      window.location.href = "/ui/profile/";
+      return null;
+    }
+
+    setHeader(me.username, me.role);
+
+    document.getElementById("p_id").textContent = me.id ?? "—";
+    document.getElementById("p_username").textContent = me.username ?? "—";
+    document.getElementById("p_role").textContent = me.role ?? "—";
+    document.getElementById("p_email").textContent = me.email ?? "—";
+    document.getElementById("p_joined").textContent = me.date_joined ?? "—";
+    document.getElementById("p_last").textContent = me.last_login ?? "—";
+
+    return me;
+  }
+
+  /* ========= Groups ========= */
+  async function loadGroups(){
+    const res = await apiTry(EP.groups, { method:"GET" });
+    GROUPS = await res.json().catch(()=>[]);
+
+    const box = document.getElementById("groupsBox");
+    if (!GROUPS || GROUPS.length === 0){
+      box.innerHTML = `<div class="muted">هنوز به گروهی اضافه نشدید!</div>`;
       return;
     }
 
-    const data = await res.json();
+    let html = `
+      <table class="tablex">
+        <thead>
+          <tr>
+            <th>نام گروه</th>
+            <th>دسترسی</th>
+            <th>اعضا</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
 
-    const username = data.username || "—";
-    const role = data.role || "expert";
-    const email = (data.email === null || data.email === undefined || data.email === "") ? "—" : data.email;
+    GROUPS.forEach(g=>{
+      const name = safeGroupName(g);
+      const acc  = safeAccess(g) || "read";
+      html += `
+        <tr>
+          <td><b>${name}</b> <span class="muted">(#${g.id})</span></td>
+          <td>${badgeAccess(acc)}</td>
+          <td>
+            <button class="btnx" onclick="toggleMembers(${g.id})">نمایش اعضا</button>
+            <div class="panel" id="panel-${g.id}"></div>
+          </td>
+        </tr>
+      `;
+    });
 
-    setHeader(username, role);
-
-    document.getElementById("p_username").textContent = username;
-    document.getElementById("p_role").textContent = role;
-    document.getElementById("p_email").textContent = email;
-    document.getElementById("p_joined").textContent = data.date_joined || "—";
-    document.getElementById("p_last").textContent = data.last_login || "—";
+    html += `</tbody></table>`;
+    box.innerHTML = html;
   }
 
-  document.getElementById("btnLogout").addEventListener("click", () => {
-    clearToken();
-    window.location.href="/ui/login/";
+  function closeAllPanels(){
+    GROUPS.forEach(g=>{
+      const p = document.getElementById(`panel-${g.id}`);
+      if (p){ p.style.display = "none"; p.innerHTML=""; }
+    });
+  }
+
+  async function toggleMembers(gid){
+    const p = document.getElementById(`panel-${gid}`);
+    if (!p) return;
+
+    // اگر بازه، ببند
+    if (p.style.display === "block"){
+      p.style.display = "none";
+      return;
+    }
+
+    closeAllPanels();
+    p.style.display = "block";
+    p.innerHTML = `<div class="muted">در حال دریافت اعضا...</div>`;
+
+    const res = await apiTry(EP.groupMembers(gid), { method:"GET" });
+    const members = await res.json().catch(()=>[]);
+
+    if (!members || members.length === 0){
+      p.innerHTML = `<div class="muted">عضوی ثبت نشده است.</div>`;
+      return;
+    }
+
+    const list = members.map(m=>{
+      const u = m.user || m;
+      return `• <b>${u.username ?? "-"}</b> <span class="muted">(${u.role ?? "-"})</span>`;
+    }).join("<br>");
+
+    p.innerHTML = `<div style="line-height:2;">${list}</div>`;
+  }
+
+  /* ========= Password ========= */
+  async function changePassword(){
+    const old_password = document.getElementById("oldPass").value.trim();
+    const new_password = document.getElementById("newPass").value.trim();
+    const new_password_confirm = document.getElementById("newPass2").value.trim();
+
+    if(!old_password || !new_password || !new_password_confirm){
+      toast("همه فیلدهای رمز را کامل کنید.", "warn"); return;
+    }
+    if(new_password !== new_password_confirm){
+      toast("رمز جدید و تکرار آن یکسان نیست.", "warn"); return;
+    }
+
+    const res = await apiTry(EP.passwordUpdate, {
+      method:"POST",
+      body: JSON.stringify({ old_password, new_password, new_password_confirm })
+    });
+
+    const data = await res.json().catch(()=>({}));
+    toast(data.detail || "رمز با موفقیت تغییر کرد.", "info");
+
+    document.getElementById("oldPass").value = "";
+    document.getElementById("newPass").value = "";
+    document.getElementById("newPass2").value = "";
+  }
+
+  /* ========= Events ========= */
+  document.getElementById("btnLogout").addEventListener("click", ()=>{
+    clearAuth();
+    window.location.href = "/ui/login/";
   });
 
-  loadProfile();
+  document.getElementById("btnChangePass").addEventListener("click", changePassword);
+
+  /* ========= Boot ========= */
+  (async function(){
+    const token = getToken();
+    if(!token){ window.location.href="/ui/login/"; return; }
+
+    try{
+      const me = await loadMe();
+      if(!me) return;
+      await loadGroups();
+    }catch(e){
+      toast("خطا در ارتباط با سرور.", "danger");
+    }
+  })();
 </script>
 {% endblock %}
