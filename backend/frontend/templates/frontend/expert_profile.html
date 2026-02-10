@@ -142,14 +142,14 @@
     box-shadow: 0 10px 30px rgba(245,158,11,.18);
   }
 
-  .form-control, .form-select{
+  .form-control, .form-select, textarea{
     background: rgba(2,6,23,.35) !important;
     border: 1px solid rgba(148,163,184,.22) !important;
     color: #e5e7eb !important;
     border-radius: 12px !important;
     box-shadow: none !important;
   }
-  .form-control:focus, .form-select:focus{
+  .form-control:focus, .form-select:focus, textarea:focus{
     border-color: rgba(251,191,36,.75) !important;
     box-shadow: 0 0 0 4px rgba(251,191,36,.12) !important;
   }
@@ -185,12 +185,18 @@
     color:#fff; z-index:9999;
     opacity:0; transform:translateY(12px);
     transition:.2s;
-    max-width: 340px;
-    line-height: 1.8;
+    max-width: 360px;
+    line-height: 1.9;
   }
   .dm-toast.info{ border-color: rgba(251,191,36,.25); }
   .dm-toast.warn{ border-color: rgba(245,158,11,.35); }
   .dm-toast.danger{ border-color: rgba(239,68,68,.35); }
+
+  .hintline{
+    margin-top: 10px;
+    font-size: 12px;
+    color: rgba(226,232,240,.65);
+  }
 </style>
 {% endblock %}
 
@@ -206,6 +212,7 @@
 
     <!-- LEFT -->
     <div class="user-area">
+      <button class="btn-logout" id="btnLogout" type="button">خروج</button>
 
       <a class="user-chip" href="/ui/" title="بازگشت به پنل">
         <div class="user-avatar" id="ui-avatar">U</div>
@@ -214,8 +221,6 @@
           <div class="user-role" id="ui-role">—</div>
         </div>
       </a>
-        <button class="btn-logout" id="btnLogout" type="button">خروج</button>
-
     </div>
   </div>
 
@@ -233,6 +238,7 @@
         <div class="k">تاریخ عضویت</div><div class="v" id="p_joined">—</div>
         <div class="k">آخرین ورود</div><div class="v" id="p_last">—</div>
       </div>
+
     </div>
 
     <!-- Password Update -->
@@ -254,11 +260,55 @@
       <button class="btnx btn-gold w-100" id="btnChangePass">ثبت تغییرات</button>
     </div>
 
+    <!-- Upload Report -->
+    <div class="cardx" style="grid-column:1/-1;">
+      <h3>آپلود گزارش</h3>
+      <hr style="border-color:rgba(255,255,255,.08)">
+
+      <div class="row g-2">
+        <div class="col-md-4">
+        </div>
+        <div class="col-md-6">
+          <label class="muted">توضیحات (اختیاری)</label>
+          <input id="repDesc" class="form-control" placeholder="خلاصه کوتاه از گزارش...">
+        </div>
+        <div class="col-md-2">
+          <label class="muted">نوع</label>
+          <select id="repType" class="form-select">
+            <option value="general">عمومی</option>
+            <option value="fire">آتش‌سوزی</option>
+            <option value="flood">سیل</option>
+            <option value="earthquake">زلزله</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row g-2 mt-2">
+        <div class="col-md-9">
+          <label class="muted">فایل</label>
+          <input id="repFile" class="form-control" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+          <div class="hintline">فرمت‌های مجاز: PDF / DOC / DOCX</div>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+          <button class="btnx btn-gold w-100" id="btnUpload">آپلود</button>
+        </div>
+      </div>
+
+      <div class="hintline" id="uploadHint"></div>
+    </div>
+
     <!-- My Groups -->
     <div class="cardx" style="grid-column:1/-1;">
       <h3>گروه‌های من</h3>
       <hr style="border-color:rgba(255,255,255,.08)">
       <div id="groupsBox" class="muted">در حال دریافت گروه‌ها...</div>
+    </div>
+
+    <!-- My Reports (optional list) -->
+    <div class="cardx" style="grid-column:1/-1;">
+      <h3>گزارش‌های من</h3>
+      <hr style="border-color:rgba(255,255,255,.08)">
+      <div id="myReportsBox" class="muted">در حال دریافت...</div>
     </div>
 
   </div>
@@ -271,6 +321,7 @@
 <script>
   /* ========= Helpers ========= */
   const toastEl = document.getElementById("toast");
+  const uploadHint = document.getElementById("uploadHint");
 
   function toast(msg, type="info"){
     toastEl.className = "dm-toast " + type;
@@ -280,13 +331,14 @@
     setTimeout(() => {
       toastEl.style.opacity = "0";
       toastEl.style.transform = "translateY(12px)";
-    }, 2400);
+    }, 2600);
   }
 
   function getToken(){
     return localStorage.getItem("access_token")
         || localStorage.getItem("access")
         || localStorage.getItem("token")
+        || localStorage.getItem("jwt")
         || "";
   }
 
@@ -294,6 +346,7 @@
     localStorage.removeItem("access_token");
     localStorage.removeItem("access");
     localStorage.removeItem("token");
+    localStorage.removeItem("jwt");
     localStorage.removeItem("dm_user");
   }
 
@@ -306,11 +359,9 @@
   async function apiTry(urls, options){
     const token = getToken();
     const headers = Object.assign({}, options?.headers || {});
-    headers["Content-Type"] = headers["Content-Type"] || "application/json";
     if (token) headers["Authorization"] = "Bearer " + token;
 
     let lastErr = null;
-
     for (const url of urls){
       try{
         const res = await fetch(url, { ...options, headers });
@@ -318,7 +369,7 @@
         if (res.status === 404) continue;
 
         if (res.status === 401){
-          toast("جلسه شما منقضی شده. دوباره وارد شوید.", "warn");
+          toast("نشست شما منقضی شده. دوباره وارد شوید.", "warn");
           clearAuth();
           setTimeout(()=>window.location.href="/ui/login/", 700);
           throw new Error("401");
@@ -354,13 +405,20 @@
   /* ========= Endpoint Candidates ========= */
   const EP = {
     myprofile: ["/api/users/myprofile/", "/api/users/profile/my/", "/api/users/me/"],
+
+    // groups (for "my groups" some backends return only my groups; some return all. We'll still render safely)
     groups:    ["/api/users/groups/", "/api/users/access-groups/", "/api/users/group/"],
     groupMembers: (gid) => [
       `/api/users/groups/${gid}/members/`,
       `/api/users/access-groups/${gid}/members/`,
       `/api/users/groups/${gid}/users/`,
     ],
+
     passwordUpdate: ["/api/users/password/update/", "/api/users/password/change/"],
+
+    // reports (NEW)
+    reportUpload: ["/api/reports/upload/", "/api/users/reports/upload/", "/api/users/report/upload/"],
+    reportMyList: ["/api/reports/my/", "/api/users/reports/my/", "/api/users/reports/"],
   };
 
   let GROUPS = [];
@@ -397,9 +455,12 @@
 
     const box = document.getElementById("groupsBox");
     if (!GROUPS || GROUPS.length === 0){
-      box.innerHTML = `<div class="muted">هنوز به گروهی اضافه نشدید!</div>`;
+      box.innerHTML = `<div class="muted">هنوز به گروهی اضافه نشدید.</div>`;
       return;
     }
+
+    // sort by name (alphabetical)
+    GROUPS.sort((a,b)=> safeGroupName(a).localeCompare(safeGroupName(b), 'fa'));
 
     let html = `
       <table class="tablex">
@@ -443,7 +504,6 @@
     const p = document.getElementById(`panel-${gid}`);
     if (!p) return;
 
-    // اگر بازه، ببند
     if (p.style.display === "block"){
       p.style.display = "none";
       return;
@@ -484,6 +544,7 @@
 
     const res = await apiTry(EP.passwordUpdate, {
       method:"POST",
+      headers: { "Content-Type":"application/json" },
       body: JSON.stringify({ old_password, new_password, new_password_confirm })
     });
 
@@ -495,6 +556,122 @@
     document.getElementById("newPass2").value = "";
   }
 
+  /* ========= Reports (UPLOAD) ========= */
+  async function uploadReport(){
+    const title = document.getElementById("repTitle").value.trim();
+    const desc  = document.getElementById("repDesc").value.trim();
+    const type  = document.getElementById("repType").value;
+    const fileInput = document.getElementById("repFile");
+    const file = fileInput.files?.[0];
+
+    uploadHint.textContent = "";
+
+    if(!title){
+      toast("عنوان گزارش را وارد کنید.", "warn"); return;
+    }
+    if(!file){
+      toast("فایل گزارش را انتخاب کنید.", "warn"); return;
+    }
+
+    const ext = (file.name.split(".").pop() || "").toLowerCase();
+    if(!["pdf","doc","docx"].includes(ext)){
+      toast("فرمت فایل باید PDF یا Word باشد.", "warn"); return;
+    }
+
+    const fd = new FormData();
+    fd.append("title", title);
+    fd.append("description", desc);
+    fd.append("type", type);
+    fd.append("file", file);
+
+    uploadHint.textContent = "در حال آپلود...";
+
+    try{
+      const res = await apiTry(EP.reportUpload, {
+        method:"POST",
+        body: fd
+      });
+
+      const data = await res.json().catch(()=>({}));
+      toast(data.detail || "گزارش با موفقیت آپلود شد.", "info");
+
+      // reset
+      document.getElementById("repTitle").value = "";
+      document.getElementById("repDesc").value = "";
+      document.getElementById("repType").value = "general";
+      fileInput.value = "";
+      uploadHint.textContent = "";
+
+      // refresh list
+      await loadMyReports();
+
+    }catch(e){
+      uploadHint.textContent = "";
+      toast("آپلود انجام نشد. (احتمالاً API گزارش‌ها هنوز در بک‌اند اضافه نشده)", "warn");
+    }
+  }
+
+  function safeReportTitle(r){ return r.title || r.name || r.report_title || "—"; }
+  function safeReportType(r){ return r.type || r.subsystem || "—"; }
+  function safeReportDate(r){ return r.created_at || r.uploaded_at || r.date || "—"; }
+  function safeReportFile(r){ return r.file_name || r.filename || r.file || "—"; }
+  function safeReportUrl(r){ return r.file_url || r.url || r.download_url || ""; }
+
+  async function loadMyReports(){
+    const box = document.getElementById("myReportsBox");
+    box.innerHTML = `<div class="muted">در حال دریافت...</div>`;
+
+    try{
+      const res = await apiTry(EP.reportMyList, { method:"GET" });
+      const items = await res.json().catch(()=>[]);
+
+      if(!items || items.length === 0){
+        box.innerHTML = `<div class="muted">فعلاً گزارشی ثبت نشده است.</div>`;
+        return;
+      }
+
+      // sort by title
+      items.sort((a,b)=> safeReportTitle(a).localeCompare(safeReportTitle(b), 'fa'));
+
+      let html = `
+        <table class="tablex">
+          <thead>
+            <tr>
+              <th>عنوان</th>
+              <th>نوع</th>
+              <th>تاریخ</th>
+              <th>فایل</th>
+              <th>عملیات</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      items.forEach(r=>{
+        const url = safeReportUrl(r);
+        const btn = url
+          ? `<a class="btnx" href="${url}" target="_blank">باز کردن</a>`
+          : `<button class="btnx" disabled title="URL فایل از API برنگشته">باز کردن</button>`;
+
+        html += `
+          <tr>
+            <td><b>${safeReportTitle(r)}</b></td>
+            <td class="muted">${safeReportType(r)}</td>
+            <td class="muted">${safeReportDate(r)}</td>
+            <td class="muted">${safeReportFile(r)}</td>
+            <td>${btn}</td>
+          </tr>
+        `;
+      });
+
+      html += `</tbody></table>`;
+      box.innerHTML = html;
+
+    }catch(e){
+      box.innerHTML = `<div class="muted"></div>`;
+    }
+  }
+
   /* ========= Events ========= */
   document.getElementById("btnLogout").addEventListener("click", ()=>{
     clearAuth();
@@ -502,6 +679,7 @@
   });
 
   document.getElementById("btnChangePass").addEventListener("click", changePassword);
+  document.getElementById("btnUpload").addEventListener("click", uploadReport);
 
   /* ========= Boot ========= */
   (async function(){
@@ -511,7 +689,9 @@
     try{
       const me = await loadMe();
       if(!me) return;
+
       await loadGroups();
+      await loadMyReports();
     }catch(e){
       toast("خطا در ارتباط با سرور.", "danger");
     }

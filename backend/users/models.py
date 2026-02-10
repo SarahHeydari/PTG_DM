@@ -74,3 +74,40 @@ class GroupMember(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user.username} -> {self.group.name}"
+
+
+class Report(models.Model):
+    SUBSYSTEM_CHOICES = [
+        ("general", "General"),
+        ("fire", "Fire"),
+        ("flood", "Flood"),
+        ("earthquake", "Earthquake"),
+    ]
+
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, null=True)
+
+    subsystem = models.CharField(
+        max_length=20,
+        choices=SUBSYSTEM_CHOICES,
+        default="general",
+    )
+
+    # Store files under: media/reports/YYYY/MM/DD/...
+    file = models.FileField(upload_to="reports/%Y/%m/%d/")
+
+    # IMPORTANT: FK to your own User model in users app
+    uploaded_by = models.ForeignKey(
+        "users.User",
+        on_delete=models.CASCADE,
+        related_name="reports",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "users_report"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.title} ({self.subsystem})"

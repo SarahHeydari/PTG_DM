@@ -292,6 +292,33 @@
         </div>
       </div>
 
+      <!-- Charts -->
+      <div class="row g-3 mt-1">
+        <div class="col-12 col-lg-6">
+          <div class="brand-card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="mb-0">توزیع نقش کاربران</h5>
+              <span class="mini-muted small">admin / manager / expert</span>
+            </div>
+            <div style="height:280px;">
+              <canvas id="chartUsersByRole"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-lg-6">
+          <div class="brand-card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h5 class="mb-0">سطح دسترسی گروه‌ها</h5>
+              <span class="mini-muted small">read / write</span>
+            </div>
+            <div style="height:280px;">
+              <canvas id="chartGroupsByAccess"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="brand-card p-3 mt-3">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <h5 class="mb-0">گروه‌های پرتعداد (Top 10)</h5>
@@ -606,6 +633,9 @@
   </div>
 </div>
 
+<!-- Chart.js (CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
 <script>
 (function () {
   function getToken() {
@@ -616,6 +646,10 @@
       localStorage.getItem("jwt") ||
       localStorage.getItem("accessToken")
     );
+  }
+
+  function cssVar(name){
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   }
 
   function showError(msg) {
@@ -711,6 +745,114 @@
     el.classList.add("d-none");
   }
 
+  /* ===================== CHARTS ===================== */
+  let chartUsersByRole = null;
+  let chartGroupsByAccess = null;
+
+  function chartTextColor(){ return "rgba(255,255,255,.85)"; }
+  function chartGridColor(){ return "rgba(255,255,255,.10)"; }
+
+  function buildUsersByRoleChart(values){
+    const el = document.getElementById("chartUsersByRole");
+    if (!el || typeof Chart === "undefined") return;
+
+    const yellow = cssVar("--brand-yellow") || "#F6C343";
+    const yellow2 = cssVar("--brand-yellow-2") || "#FFD56A";
+    const navy = cssVar("--brand-navy") || "#0B1020";
+
+    const bg = [
+      yellow,
+      "rgba(246,195,67,.55)",
+      yellow2
+    ];
+    const border = [
+      navy, navy, navy
+    ];
+
+    if (!chartUsersByRole){
+      chartUsersByRole = new Chart(el, {
+        type: "doughnut",
+        data: {
+          labels: ["admin", "manager", "expert"],
+          datasets: [{
+            label: "Users by role",
+            data: values,
+            backgroundColor: bg,
+            borderColor: border,
+            borderWidth: 2,
+            hoverOffset: 6,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: chartTextColor() } },
+            tooltip: { bodyColor: "#fff", titleColor: "#fff" }
+          }
+        }
+      });
+      return;
+    }
+
+    chartUsersByRole.data.datasets[0].data = values;
+    chartUsersByRole.update();
+  }
+
+  function buildGroupsByAccessChart(values){
+    const el = document.getElementById("chartGroupsByAccess");
+    if (!el || typeof Chart === "undefined") return;
+
+    const yellow = cssVar("--brand-yellow") || "#F6C343";
+    const yellow2 = cssVar("--brand-yellow-2") || "#FFD56A";
+    const navy = cssVar("--brand-navy") || "#0B1020";
+
+    if (!chartGroupsByAccess){
+      chartGroupsByAccess = new Chart(el, {
+        type: "bar",
+        data: {
+          labels: ["read", "write"],
+          datasets: [{
+            label: "Groups by access",
+            data: values,
+            backgroundColor: [ "rgba(246,195,67,.55)", yellow ],
+            borderColor: [ navy, navy ],
+            borderWidth: 2,
+            borderRadius: 10,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: chartTextColor() } },
+            tooltip: { bodyColor: "#fff", titleColor: "#fff" }
+          },
+          scales: {
+            x: {
+              ticks: { color: chartTextColor() },
+              grid: { color: chartGridColor() }
+            },
+            y: {
+              ticks: { color: chartTextColor() },
+              grid: { color: chartGridColor() },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+      return;
+    }
+
+    chartGroupsByAccess.data.datasets[0].data = values;
+    chartGroupsByAccess.update();
+  }
+
+  function resizeCharts(){
+    try { if (chartUsersByRole) chartUsersByRole.resize(); } catch(e) {}
+    try { if (chartGroupsByAccess) chartGroupsByAccess.resize(); } catch(e) {}
+  }
+
   /* ===================== LOAD PING + STATS ===================== */
   async function loadPingAndStats(){
     clearError();
@@ -749,6 +891,13 @@
         </tr>
       `).join("");
     }
+
+    // Charts update (brand colors)
+    const usersRole = data.users_by_role || { admin: 0, manager: 0, expert: 0 };
+    const groupsAccess = data.groups_by_access_level || { read: 0, write: 0 };
+
+    buildUsersByRoleChart([usersRole.admin||0, usersRole.manager||0, usersRole.expert||0]);
+    buildGroupsByAccessChart([groupsAccess.read||0, groupsAccess.write||0]);
 
     setLoading(false);
   }
@@ -1135,6 +1284,14 @@
     if (groupId) loadMembers(groupId);
   });
 
+  // Resize charts when stats tab becomes visible
+  document.querySelectorAll('button[data-bs-toggle="pill"]').forEach(btn=>{
+    btn.addEventListener("shown.bs.tab", (e)=>{
+      const target = btn.getAttribute("data-bs-target");
+      if (target === "#tab-stats") resizeCharts();
+    });
+  });
+
   /* ===================== INIT ===================== */
   document.addEventListener("DOMContentLoaded", async ()=>{
     clearError();
@@ -1143,6 +1300,7 @@
     await loadUsers();
     await loadGroups();
     setLoading(false);
+    resizeCharts();
   });
 })();
 </script>
