@@ -45,7 +45,7 @@ class SatelliteImage(models.Model):
 
 class IranCounty(gis_models.Model):
     name = models.CharField(max_length=100)
-    geometry = gis_models.PolygonField(geography=True)
+    geometry = gis_models.MultiPolygonField(geography=True)  # ✅ was PolygonField
 
     class Meta:
         db_table = "iran_counties"
@@ -57,7 +57,7 @@ class IranCounty(gis_models.Model):
 
 class IranProvince(gis_models.Model):
     name = models.CharField(max_length=100)
-    geometry = gis_models.PolygonField(geography=True)
+    geometry = gis_models.MultiPolygonField(geography=True)  # ✅ was PolygonField
 
     class Meta:
         db_table = "iran_provinces"
@@ -69,7 +69,7 @@ class IranProvince(gis_models.Model):
 
 class IranForest(gis_models.Model):
     name = models.CharField(max_length=100)
-    geometry = gis_models.PolygonField(geography=True)
+    geometry = gis_models.MultiPolygonField(geography=True)
 
     class Meta:
         db_table = "iran_forests"
@@ -99,12 +99,9 @@ class AOI(gis_models.Model):
 
 
 class FireRiskArea(gis_models.Model):
-    """
-    Fire susceptibility / risk polygons (vector)
-    """
     name = models.CharField(max_length=120)
-    level = models.IntegerField(default=1)  # 1..5
-    geometry = gis_models.PolygonField(geography=True)
+    level = models.IntegerField(default=1)
+    geometry = gis_models.MultiPolygonField(geography=True)
 
     class Meta:
         db_table = "fire_risk_areas"
