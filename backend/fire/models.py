@@ -97,11 +97,10 @@ class AOI(gis_models.Model):
     def __str__(self):
         return f"{self.name} ({self.source})"
 
-
 class FireRiskArea(gis_models.Model):
     name = models.CharField(max_length=120)
     level = models.IntegerField(default=1)
-    geometry = gis_models.MultiPolygonField(geography=True)
+    geometry = gis_models.PointField(geography=True)  # ✅ چون shapefile Point است
 
     class Meta:
         db_table = "fire_risk_areas"
