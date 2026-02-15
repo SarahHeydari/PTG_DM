@@ -3,175 +3,227 @@ import json
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
-from django.contrib.gis.geos import GEOSGeometry, MultiPolygon
+from django.contrib.gis.geos import GEOSGeometry, MultiPolygon, MultiPoint
 from django.db import transaction
 
-from fire.models import IranForest, IranCounty, IranProvince, FireRiskArea
+from fire.models import IranProvince, IranCounty, IranForest, FireRiskArea
 
 
-KIND_MAP = {
-    "forests": IranForest,
-    "counties": IranCounty,
-    "provinces": IranProvince,
-    "fire-risk": FireRiskArea,
-}
-
-
-def _pick_name(props: dict, fallback: str = "Unnamed") -> str:
-    # رایج‌ترین کلیدهای نام در دیتاهای ایران
-    for k in ("name", "Name", "NAME", "نام", "title", "Title"):
-        v = props.get(k)
-        if v:
-            return str(v).strip()
-    return fallback
-
-
-def _pick_level(props: dict, default: int = 1) -> int:
-    # برای fire-risk
-    for k in ("level", "Level", "LEVEL", "risk", "RISK", "class", "Class"):
-        v = props.get(k)
-        if v is None:
-            continue
-        try:
-            return int(v)
-        except Exception:
-            continue
-    return default
-
-
-def _normalize_geom(geom: GEOSGeometry):
-    """
-    Accept only Polygon/MultiPolygon.
-    Convert Polygon -> MultiPolygon when needed.
-    """
-    if geom is None:
-        return None
-
-    # بعضی geojson ها geometry=null دارن
+def _read_geojson(path: str) -> dict:
+    p = Path(path)
+    if not p.exists():
+        raise CommandError(f"File not found: {path}")
     try:
-        gtype = geom.geom_type
-    except Exception:
-        return None
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception as e:
+        raise CommandError(f"Invalid JSON: {e}")
 
-    if gtype not in ("Polygon", "MultiPolygon"):
-        return None
 
-    if gtype == "Polygon":
-        return MultiPolygon(geom)
+def _as_geos(geom_obj: dict, srid: int = 4326) -> GEOSGeometry:
+    # geom_obj is like {"type": "...", "coordinates": ...}
+    g = GEOSGeometry(json.dumps(geom_obj))
+    g.srid = srid
+    return g
 
-    return geom  # MultiPolygon
+
+def _coerce_to_multipolygon(g: GEOSGeometry):
+    """
+    Accept Polygon/MultiPolygon. Convert Polygon -> MultiPolygon.
+    Return (geom or None, skip_reason or None)
+    """
+    if g is None:
+        return None, "empty geometry"
+
+    if g.geom_type == "MultiPolygon":
+        return g, None
+    if g.geom_type == "Polygon":
+        return MultiPolygon(g), None
+
+    # Sometimes geometry collections exist
+    if g.geom_type == "GeometryCollection":
+        polys = []
+        for part in g:
+            if part.geom_type == "Polygon":
+                polys.append(part)
+            elif part.geom_type == "MultiPolygon":
+                for p in part:
+                    polys.append(p)
+        if polys:
+            return MultiPolygon(*polys), None
+        return None, "GeometryCollection without polygons"
+
+    return None, f"unsupported geom_type for multipolygon: {g.geom_type}"
+
+
+def _coerce_to_polygon(g: GEOSGeometry):
+    """
+    Accept Polygon/MultiPolygon. If MultiPolygon, take the first polygon (fallback).
+    Return (geom or None, skip_reason or None)
+    """
+    if g is None:
+        return None, "empty geometry"
+
+    if g.geom_type == "Polygon":
+        return g, None
+    if g.geom_type == "MultiPolygon":
+        # fallback: take first polygon (keeps loader running)
+        try:
+            return g[0], None
+        except Exception:
+            return None, "MultiPolygon empty"
+
+    if g.geom_type == "GeometryCollection":
+        for part in g:
+            if part.geom_type == "Polygon":
+                return part, None
+            if part.geom_type == "MultiPolygon":
+                try:
+                    return part[0], None
+                except Exception:
+                    pass
+        return None, "GeometryCollection without polygons"
+
+    return None, f"unsupported geom_type for polygon: {g.geom_type}"
+
+
+def _coerce_to_points(g: GEOSGeometry):
+    """
+    Accept Point/MultiPoint. If MultiPoint, return list of Points.
+    Return (points_list, skip_reason or None)
+    """
+    if g is None:
+        return [], "empty geometry"
+
+    if g.geom_type == "Point":
+        return [g], None
+
+    if g.geom_type == "MultiPoint":
+        pts = []
+        for p in g:
+            if p.geom_type == "Point":
+                pts.append(p)
+        if pts:
+            return pts, None
+        return [], "MultiPoint empty"
+
+    # If somebody gives Polygon for risk layer, we could take centroid, but
+    # for now we skip explicitly to avoid silent wrong data.
+    return [], f"unsupported geom_type for point: {g.geom_type}"
 
 
 class Command(BaseCommand):
-    help = "Load a GeoJSON FeatureCollection into fire vector tables."
+    help = "Load Fire subsystem GeoJSON into PostGIS tables."
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            "--kind",
-            required=True,
-            choices=KIND_MAP.keys(),
-            help="Target kind: forests | counties | provinces | fire-risk",
-        )
-        parser.add_argument(
-            "--path",
-            required=True,
-            help="Path to .geojson file (inside container, e.g. /app/data/fire/geojson/jungle.geojson)",
-        )
-        parser.add_argument(
-            "--truncate",
-            action="store_true",
-            help="Truncate table before insert",
-        )
-        parser.add_argument(
-            "--batch",
-            type=int,
-            default=1000,
-            help="bulk_create batch size (default 1000)",
-        )
+        parser.add_argument("--kind", required=True, choices=["provinces", "counties", "forests", "fire-risk"])
+        parser.add_argument("--path", required=True, help="Path to GeoJSON FeatureCollection")
+        parser.add_argument("--truncate", action="store_true", help="Truncate table before insert")
+        parser.add_argument("--batch", type=int, default=1000, help="bulk_create batch size")
 
-    def handle(self, *args, **options):
-        kind = options["kind"]
-        path = options["path"]
-        truncate = options["truncate"]
-        batch = options["batch"]
+    @transaction.atomic
+    def handle(self, *args, **opts):
+        kind = opts["kind"]
+        path = opts["path"]
+        truncate = opts["truncate"]
+        batch = opts["batch"]
 
-        model = KIND_MAP[kind]
-
-        p = Path(path)
-        if not p.exists():
-            raise CommandError(f"File not found: {path}")
-
-        # load json
-        try:
-            data = json.loads(p.read_text(encoding="utf-8"))
-        except Exception as e:
-            raise CommandError(f"Invalid JSON: {e}")
+        data = _read_geojson(path)
 
         if data.get("type") != "FeatureCollection":
             raise CommandError("GeoJSON must be a FeatureCollection")
 
         features = data.get("features") or []
         if not isinstance(features, list):
-            raise CommandError("GeoJSON 'features' must be a list")
+            raise CommandError("Invalid FeatureCollection: features must be a list")
 
-        table_name = model._meta.db_table
+        # Map kind -> model + geometry coercer + table name
+        if kind == "provinces":
+            model = IranProvince
+            geom_mode = "polygon"  # your model is PolygonField currently
+        elif kind == "counties":
+            model = IranCounty
+            geom_mode = "polygon"  # your model is PolygonField currently
+        elif kind == "forests":
+            model = IranForest
+            geom_mode = "multipolygon"  # your model is MultiPolygonField
+        elif kind == "fire-risk":
+            model = FireRiskArea
+            geom_mode = "point"  # after your migration: PointField
+        else:
+            raise CommandError(f"Unknown kind: {kind}")
 
         if truncate:
+            self.stdout.write(self.style.WARNING(f"Truncated: {model._meta.db_table}"))
             model.objects.all().delete()
-            self.stdout.write(self.style.WARNING(f"Truncated: {table_name}"))
 
         inserted = 0
         skipped = 0
         objs = []
 
-        # SRID: چون خروجی ogr2ogr -t_srs EPSG:4326 بوده
-        # پس هندسه‌ها باید 4326 باشند.
-        for f in features:
-            if not isinstance(f, dict):
+        for feat in features:
+            if not isinstance(feat, dict) or feat.get("type") != "Feature":
                 skipped += 1
                 continue
 
-            geom_json = f.get("geometry")
-            props = f.get("properties") or {}
-
-            if not geom_json:
+            geom_obj = feat.get("geometry")
+            if not geom_obj:
                 skipped += 1
                 continue
+
+            props = feat.get("properties") or {}
+            name = (props.get("name") or props.get("Name") or props.get("NAME") or "").strip()
+            if not name:
+                # fallback name
+                name = f"{kind}_{inserted + skipped + 1}"
 
             try:
-                geom = GEOSGeometry(json.dumps(geom_json), srid=4326)
+                g = _as_geos(geom_obj, srid=4326)
             except Exception:
                 skipped += 1
                 continue
 
-            geom = _normalize_geom(geom)
-            if geom is None:
-                skipped += 1
-                continue
-
-            name = _pick_name(props, fallback="Unnamed")
-
-            if kind == "fire-risk":
-                level = _pick_level(props, default=1)
-                objs.append(model(name=name, level=level, geometry=geom))
-            else:
+            # --- geometry coercion per kind ---
+            if geom_mode == "multipolygon":
+                geom, reason = _coerce_to_multipolygon(g)
+                if geom is None:
+                    skipped += 1
+                    continue
                 objs.append(model(name=name, geometry=geom))
 
-            # flush batch
+            elif geom_mode == "polygon":
+                geom, reason = _coerce_to_polygon(g)
+                if geom is None:
+                    skipped += 1
+                    continue
+                objs.append(model(name=name, geometry=geom))
+
+            elif geom_mode == "point":
+                points, reason = _coerce_to_points(g)
+                if not points:
+                    skipped += 1
+                    continue
+
+                # level is optional; default 1
+                lvl = props.get("level") or props.get("Level") or props.get("LEVEL") or 1
+                try:
+                    lvl = int(lvl)
+                except Exception:
+                    lvl = 1
+
+                # explode multipoint -> many rows
+                for p in points:
+                    objs.append(model(name=name, level=lvl, geometry=p))
+
+            # flush batches
             if len(objs) >= batch:
-                with transaction.atomic():
-                    model.objects.bulk_create(objs, batch_size=batch)
+                model.objects.bulk_create(objs, batch_size=batch)
                 inserted += len(objs)
                 objs = []
 
-        # final flush
         if objs:
-            with transaction.atomic():
-                model.objects.bulk_create(objs, batch_size=batch)
+            model.objects.bulk_create(objs, batch_size=batch)
             inserted += len(objs)
 
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"Inserted={inserted} | Skipped={skipped} | Table={table_name}"
-            )
-        )
+        self.stdout.write(self.style.SUCCESS(
+            f"Inserted={inserted} | Skipped={skipped} | Table={model._meta.db_table}"
+        ))
