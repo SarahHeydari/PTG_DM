@@ -8,6 +8,7 @@ Django==6.0.2
 django-cors-headers==4.9.0
 django-filter==25.2
 djangorestframework==3.16.1
+djangorestframework-gis==1.2.0
 fastkml==1.4.0
 gunicorn==25.0.3
 minio==7.2.20

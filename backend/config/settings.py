@@ -27,7 +27,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -45,12 +44,9 @@ INSTALLED_APPS = [
 
 ]
 
-
-# config/settings.py
-
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "users.authentication.CustomJWTAuthentication",
+        "users.authentication.JWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",

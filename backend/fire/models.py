@@ -1,6 +1,7 @@
 # fire/models.py
 from django.db import models
 from django.contrib.gis.db import models as gis_models
+from django.contrib.gis.geos import GEOSGeometry
 
 
 class IndexLayer(models.Model):
@@ -101,6 +102,39 @@ class IranForest(gis_models.Model):
 
     class Meta:
         db_table = "iran_forests"
+
+    def __str__(self):
+        return self.name
+
+
+class AOI(gis_models.Model):
+    """
+    User-defined Area Of Interest (AOI)
+    - source: kml | draw
+    """
+    name = models.CharField(max_length=120, default="AOI")
+    source = models.CharField(max_length=20, default="draw")  # draw | kml
+    geometry = gis_models.PolygonField(geography=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "fire_aoi"
+
+    def __str__(self):
+        return f"{self.name} ({self.source})"
+
+
+class FireRiskArea(gis_models.Model):
+    """
+    Optional: Fire susceptibility / risk polygons (vector)
+    If you don't have data yet, keep it empty. API still works.
+    """
+    name = models.CharField(max_length=120)
+    level = models.IntegerField(default=1)  # 1..5 for example
+    geometry = gis_models.PolygonField(geography=True)
+
+    class Meta:
+        db_table = "fire_risk_areas"
 
     def __str__(self):
         return self.name
