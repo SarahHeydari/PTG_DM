@@ -1,7 +1,9 @@
 # fire/views.py
 import json
+
 from django.utils.dateparse import parse_date
-from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.gis.geos import GEOSGeometry, Polygon
+
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -24,6 +26,63 @@ from .serializers import (
 )
 
 
+# -----------------------
+# Helpers
+# -----------------------
+def _parse_bbox(bbox_str: str):
+    """
+    bbox=minx,miny,maxx,maxy (EPSG:4326)
+    returns Polygon(srid=4326) or None
+    """
+    try:
+        parts = [float(x) for x in bbox_str.split(",")]
+        if len(parts) != 4:
+            return None
+        minx, miny, maxx, maxy = parts
+        if minx >= maxx or miny >= maxy:
+            return None
+        poly = Polygon.from_bbox((minx, miny, maxx, maxy))
+        poly.srid = 4326
+        return poly
+    except Exception:
+        return None
+
+
+def _get_limit(request, default=1000, max_limit=5000):
+    limit_str = request.query_params.get("limit")
+    try:
+        limit = int(limit_str) if limit_str else default
+    except Exception:
+        limit = default
+    return max(1, min(limit, max_limit))
+
+
+def _apply_spatial_filters(qs, request, geom_field="geometry"):
+    """
+    Applies:
+      - bbox (if provided)
+      - aoi_id (if provided)
+    """
+    bbox = request.query_params.get("bbox")
+    if bbox:
+        poly = _parse_bbox(bbox)
+        if poly:
+            qs = qs.filter(**{f"{geom_field}__intersects": poly})
+
+    aoi_id = request.query_params.get("aoi_id")
+    if aoi_id:
+        try:
+            aoi = AOI.objects.get(id=int(aoi_id))
+            qs = qs.filter(**{f"{geom_field}__intersects": aoi.geometry})
+        except Exception:
+            pass
+
+    return qs
+
+
+# -----------------------
+# Catalog (for frontend menu)
+# -----------------------
 class FireCatalogAPIView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -49,6 +108,9 @@ class FireCatalogAPIView(APIView):
         return Response(data)
 
 
+# -----------------------
+# AOI (KML/DRAW -> GeoJSON polygon)
+# -----------------------
 class AOIViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -56,6 +118,14 @@ class AOIViewSet(viewsets.ModelViewSet):
     serializer_class = AOISerializer
 
     def create(self, request, *args, **kwargs):
+        """
+        Expected:
+        {
+          "name": "optional",
+          "source": "draw" | "kml",
+          "geometry": { GeoJSON Polygon }
+        }
+        """
         name = request.data.get("name") or "AOI"
         source = request.data.get("source") or "draw"
         geom_geojson = request.data.get("geometry")
@@ -72,65 +142,86 @@ class AOIViewSet(viewsets.ModelViewSet):
             return Response({"detail": "Only Polygon is supported."}, status=400)
 
         obj = AOI.objects.create(name=name, source=source, geometry=geom)
-        serializer = self.get_serializer(obj)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(self.get_serializer(obj).data, status=status.HTTP_201_CREATED)
 
 
-def _apply_aoi_filter(qs, request):
-    aoi_id = request.query_params.get("aoi_id")
-    if not aoi_id:
-        return qs
-    try:
-        aoi = AOI.objects.get(id=int(aoi_id))
-        return qs.filter(geometry__intersects=aoi.geometry)
-    except Exception:
-        return qs
+# -----------------------
+# Base for vector layers (bbox/limit/simplify + aoi_id)
+# -----------------------
+class BaseVectorViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Supports:
+      - ?bbox=minx,miny,maxx,maxy
+      - ?aoi_id=ID
+      - ?limit=1000
+      - ?simplify=0.001   (degrees; optional demo)
+    """
+    DEFAULT_LIMIT = 1000
+    MAX_LIMIT = 5000
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        qs = _apply_spatial_filters(qs, self.request, geom_field="geometry")
+        limit = _get_limit(self.request, default=self.DEFAULT_LIMIT, max_limit=self.MAX_LIMIT)
+        return qs[:limit]
+
+    def list(self, request, *args, **kwargs):
+        simplify_str = request.query_params.get("simplify")
+        tolerance = None
+        try:
+            if simplify_str:
+                tolerance = float(simplify_str)
+        except Exception:
+            tolerance = None
+
+        qs = self.get_queryset()
+        objs = list(qs)
+
+        if tolerance and tolerance > 0:
+            for obj in objs:
+                try:
+                    obj.geometry = obj.geometry.simplify(tolerance, preserve_topology=True)
+                except Exception:
+                    pass
+
+        serializer = self.get_serializer(objs, many=True)
+        return Response(serializer.data)
 
 
-class IranProvinceViewSet(viewsets.ReadOnlyModelViewSet):
+# -----------------------
+# Vector Layers (GeoJSON)
+# -----------------------
+class IranProvinceViewSet(BaseVectorViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     queryset = IranProvince.objects.all().order_by("name")
     serializer_class = IranProvinceSerializer
 
-    def get_queryset(self):
-        qs = super().get_queryset()
-        return _apply_aoi_filter(qs, self.request)
 
-
-class IranCountyViewSet(viewsets.ReadOnlyModelViewSet):
+class IranCountyViewSet(BaseVectorViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     queryset = IranCounty.objects.all().order_by("name")
     serializer_class = IranCountySerializer
 
-    def get_queryset(self):
-        qs = super().get_queryset()
-        return _apply_aoi_filter(qs, self.request)
 
-
-class IranForestViewSet(viewsets.ReadOnlyModelViewSet):
+class IranForestViewSet(BaseVectorViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     queryset = IranForest.objects.all().order_by("name")
     serializer_class = IranForestSerializer
 
-    def get_queryset(self):
-        qs = super().get_queryset()
-        return _apply_aoi_filter(qs, self.request)
 
-
-class FireRiskAreaViewSet(viewsets.ReadOnlyModelViewSet):
+class FireRiskAreaViewSet(BaseVectorViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     queryset = FireRiskArea.objects.all().order_by("name")
     serializer_class = FireRiskAreaSerializer
 
-    def get_queryset(self):
-        qs = super().get_queryset()
-        return _apply_aoi_filter(qs, self.request)
 
-
+# -----------------------
+# Index layers (metadata list with filters)
+# -----------------------
 class IndexLayerViewSet(viewsets.ReadOnlyModelViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -143,21 +234,24 @@ class IndexLayerViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
 
-        # optional date filter
+        # optional exact date
         d = self.request.query_params.get("date")
         if d:
             date_obj = parse_date(d)
             if date_obj:
                 qs = qs.filter(date=date_obj)
 
-        # important: only items with geometry can be spatially filtered
-        if self.request.query_params.get("aoi_id"):
+        # spatial filters only if geometry exists
+        if self.request.query_params.get("aoi_id") or self.request.query_params.get("bbox"):
             qs = qs.filter(geometry__isnull=False)
-            qs = _apply_aoi_filter(qs, self.request)
+            qs = _apply_spatial_filters(qs, self.request, geom_field="geometry")
 
         return qs
 
 
+# -----------------------
+# Satellite images (metadata list with filters)
+# -----------------------
 class SatelliteImageViewSet(viewsets.ReadOnlyModelViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -183,8 +277,9 @@ class SatelliteImageViewSet(viewsets.ReadOnlyModelViewSet):
             if dt:
                 qs = qs.filter(date_time__date__lte=dt)
 
-        if self.request.query_params.get("aoi_id"):
+        # spatial filters only if geometry exists
+        if self.request.query_params.get("aoi_id") or self.request.query_params.get("bbox"):
             qs = qs.filter(geometry__isnull=False)
-            qs = _apply_aoi_filter(qs, self.request)
+            qs = _apply_spatial_filters(qs, self.request, geom_field="geometry")
 
         return qs

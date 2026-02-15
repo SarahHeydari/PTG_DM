@@ -1,10 +1,8 @@
 # fire/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-
 from .views import (
-    FireCatalogAPIView,
-    AOIViewSet,
+    FireCatalogAPIView, AOIViewSet,
     IndexLayerViewSet, SatelliteImageViewSet,
     IranProvinceViewSet, IranCountyViewSet, IranForestViewSet,
     FireRiskAreaViewSet,
@@ -12,7 +10,10 @@ from .views import (
 
 router = DefaultRouter()
 router.register(r"aoi", AOIViewSet, basename="aoi")
+
 router.register(r"index-layers", IndexLayerViewSet, basename="index-layers")
+router.register(r"indexes", IndexLayerViewSet, basename="indexes")
+
 router.register(r"satellite-images", SatelliteImageViewSet, basename="satellite-images")
 
 router.register(r"vectors/provinces", IranProvinceViewSet, basename="provinces")
