@@ -12,7 +12,7 @@ from .views import (
 
 router = DefaultRouter()
 router.register(r"aoi", AOIViewSet, basename="aoi")
-router.register(r"indexes", IndexLayerViewSet, basename="indexes")
+router.register(r"index-layers", IndexLayerViewSet, basename="index-layers")
 router.register(r"satellite-images", SatelliteImageViewSet, basename="satellite-images")
 
 router.register(r"vectors/provinces", IranProvinceViewSet, basename="provinces")

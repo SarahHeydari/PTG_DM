@@ -1,4 +1,5 @@
 # fire/views.py
+import json
 from django.utils.dateparse import parse_date
 from django.contrib.gis.geos import GEOSGeometry
 from rest_framework import viewsets, status
@@ -23,9 +24,6 @@ from .serializers import (
 )
 
 
-# -----------------------
-# Catalog (for frontend menu)
-# -----------------------
 class FireCatalogAPIView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -51,9 +49,6 @@ class FireCatalogAPIView(APIView):
         return Response(data)
 
 
-# -----------------------
-# AOI (KML/DRAW -> GeoJSON polygon)
-# -----------------------
 class AOIViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -61,42 +56,46 @@ class AOIViewSet(viewsets.ModelViewSet):
     serializer_class = AOISerializer
 
     def create(self, request, *args, **kwargs):
-        """
-        Expected:
-        {
-          "name": "optional",
-          "source": "draw" | "kml",
-          "geometry": { GeoJSON Polygon }
-        }
-        """
         name = request.data.get("name") or "AOI"
         source = request.data.get("source") or "draw"
         geom_geojson = request.data.get("geometry")
 
         if not geom_geojson:
-            return Response({"error": "geometry is required (GeoJSON Polygon)."}, status=400)
+            return Response({"detail": "geometry is required (GeoJSON Polygon)."}, status=400)
 
         try:
-            import json
             geom = GEOSGeometry(json.dumps(geom_geojson), srid=4326)
         except Exception as e:
-            return Response({"error": "Invalid geometry.", "details": str(e)}, status=400)
+            return Response({"detail": "Invalid geometry.", "error": str(e)}, status=400)
 
         if geom.geom_type != "Polygon":
-            return Response({"error": "Only Polygon is supported."}, status=400)
+            return Response({"detail": "Only Polygon is supported."}, status=400)
 
         obj = AOI.objects.create(name=name, source=source, geometry=geom)
-        return Response(self.get_serializer(obj).data, status=status.HTTP_201_CREATED)
+        serializer = self.get_serializer(obj)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-# -----------------------
-# Vector Layers (GeoJSON)
-# -----------------------
+def _apply_aoi_filter(qs, request):
+    aoi_id = request.query_params.get("aoi_id")
+    if not aoi_id:
+        return qs
+    try:
+        aoi = AOI.objects.get(id=int(aoi_id))
+        return qs.filter(geometry__intersects=aoi.geometry)
+    except Exception:
+        return qs
+
+
 class IranProvinceViewSet(viewsets.ReadOnlyModelViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     queryset = IranProvince.objects.all().order_by("name")
     serializer_class = IranProvinceSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return _apply_aoi_filter(qs, self.request)
 
 
 class IranCountyViewSet(viewsets.ReadOnlyModelViewSet):
@@ -105,12 +104,20 @@ class IranCountyViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = IranCounty.objects.all().order_by("name")
     serializer_class = IranCountySerializer
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return _apply_aoi_filter(qs, self.request)
+
 
 class IranForestViewSet(viewsets.ReadOnlyModelViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
     queryset = IranForest.objects.all().order_by("name")
     serializer_class = IranForestSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return _apply_aoi_filter(qs, self.request)
 
 
 class FireRiskAreaViewSet(viewsets.ReadOnlyModelViewSet):
@@ -119,10 +126,11 @@ class FireRiskAreaViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = FireRiskArea.objects.all().order_by("name")
     serializer_class = FireRiskAreaSerializer
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return _apply_aoi_filter(qs, self.request)
 
-# -----------------------
-# Index layers (metadata list with filters)
-# -----------------------
+
 class IndexLayerViewSet(viewsets.ReadOnlyModelViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -135,26 +143,21 @@ class IndexLayerViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
 
+        # optional date filter
         d = self.request.query_params.get("date")
         if d:
             date_obj = parse_date(d)
             if date_obj:
                 qs = qs.filter(date=date_obj)
 
-        aoi_id = self.request.query_params.get("aoi_id")
-        if aoi_id:
-            try:
-                aoi = AOI.objects.get(id=int(aoi_id))
-                qs = qs.filter(geometry__intersects=aoi.geometry)
-            except Exception:
-                pass
+        # important: only items with geometry can be spatially filtered
+        if self.request.query_params.get("aoi_id"):
+            qs = qs.filter(geometry__isnull=False)
+            qs = _apply_aoi_filter(qs, self.request)
 
         return qs
 
 
-# -----------------------
-# Satellite images (metadata list with filters)
-# -----------------------
 class SatelliteImageViewSet(viewsets.ReadOnlyModelViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -180,12 +183,8 @@ class SatelliteImageViewSet(viewsets.ReadOnlyModelViewSet):
             if dt:
                 qs = qs.filter(date_time__date__lte=dt)
 
-        aoi_id = self.request.query_params.get("aoi_id")
-        if aoi_id:
-            try:
-                aoi = AOI.objects.get(id=int(aoi_id))
-                qs = qs.filter(geometry__intersects=aoi.geometry)
-            except Exception:
-                pass
+        if self.request.query_params.get("aoi_id"):
+            qs = qs.filter(geometry__isnull=False)
+            qs = _apply_aoi_filter(qs, self.request)
 
         return qs

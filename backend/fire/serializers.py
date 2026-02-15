@@ -1,7 +1,5 @@
 # fire/serializers.py
-from rest_framework import serializers
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
-
 from .models import (
     IndexLayer, SatelliteImage,
     IranProvince, IranCounty, IranForest,
@@ -44,13 +42,15 @@ class AOISerializer(GeoFeatureModelSerializer):
         fields = ("id", "name", "source", "created_at")
 
 
-class IndexLayerSerializer(serializers.ModelSerializer):
+class IndexLayerSerializer(GeoFeatureModelSerializer):
     class Meta:
         model = IndexLayer
+        geo_field = "geometry"
         fields = ("id", "title", "minio_link", "index_name", "date", "satellite_name", "created_at")
 
 
-class SatelliteImageSerializer(serializers.ModelSerializer):
+class SatelliteImageSerializer(GeoFeatureModelSerializer):
     class Meta:
         model = SatelliteImage
+        geo_field = "geometry"
         fields = ("id", "satellite_name", "date_time", "image_name", "minio_link", "created_at")

@@ -1,26 +1,14 @@
 # fire/models.py
 from django.db import models
 from django.contrib.gis.db import models as gis_models
-from django.contrib.gis.geos import GEOSGeometry
 
 
 class IndexLayer(models.Model):
-    """
-    Table name: index
-    Fields:
-      id
-      title
-      minio_link
-      index_name (e.g., ndvi)
-      date
-      geometry (polygon)
-      satellite_name
-    """
     title = models.CharField(max_length=200)
     minio_link = models.URLField(max_length=500)
-    index_name = models.CharField(max_length=50)  # e.g., NDVI, NBR
+    index_name = models.CharField(max_length=50)  # NDVI, NBR, ...
     date = models.DateField()
-    satellite_name = models.CharField(max_length=50)  # e.g., LANDSAT
+    satellite_name = models.CharField(max_length=50)  # SENTINEL2, LANDSAT8, ...
     geometry = gis_models.PolygonField(geography=True, null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -37,16 +25,6 @@ class IndexLayer(models.Model):
 
 
 class SatelliteImage(models.Model):
-    """
-    Table name: satellite_images
-    Fields:
-      id
-      satellite_name
-      date_time
-      image_name
-      minio_link
-      geometry (polygon)
-    """
     satellite_name = models.CharField(max_length=50)
     date_time = models.DateTimeField()
     image_name = models.CharField(max_length=200)
@@ -66,42 +44,36 @@ class SatelliteImage(models.Model):
 
 
 class IranCounty(gis_models.Model):
-    """
-    Table name: iran_counties
-    """
     name = models.CharField(max_length=100)
     geometry = gis_models.PolygonField(geography=True)
 
     class Meta:
         db_table = "iran_counties"
+        indexes = [models.Index(fields=["name"])]
 
     def __str__(self):
         return self.name
 
 
 class IranProvince(gis_models.Model):
-    """
-    Table name: iran_provinces
-    """
     name = models.CharField(max_length=100)
     geometry = gis_models.PolygonField(geography=True)
 
     class Meta:
         db_table = "iran_provinces"
+        indexes = [models.Index(fields=["name"])]
 
     def __str__(self):
         return self.name
 
 
 class IranForest(gis_models.Model):
-    """
-    Table name: iran_forests
-    """
     name = models.CharField(max_length=100)
     geometry = gis_models.PolygonField(geography=True)
 
     class Meta:
         db_table = "iran_forests"
+        indexes = [models.Index(fields=["name"])]
 
     def __str__(self):
         return self.name
@@ -115,10 +87,12 @@ class AOI(gis_models.Model):
     name = models.CharField(max_length=120, default="AOI")
     source = models.CharField(max_length=20, default="draw")  # draw | kml
     geometry = gis_models.PolygonField(geography=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = "fire_aoi"
+        ordering = ["-id"]
 
     def __str__(self):
         return f"{self.name} ({self.source})"
@@ -126,15 +100,18 @@ class AOI(gis_models.Model):
 
 class FireRiskArea(gis_models.Model):
     """
-    Optional: Fire susceptibility / risk polygons (vector)
-    If you don't have data yet, keep it empty. API still works.
+    Fire susceptibility / risk polygons (vector)
     """
     name = models.CharField(max_length=120)
-    level = models.IntegerField(default=1)  # 1..5 for example
+    level = models.IntegerField(default=1)  # 1..5
     geometry = gis_models.PolygonField(geography=True)
 
     class Meta:
         db_table = "fire_risk_areas"
+        indexes = [
+            models.Index(fields=["name"]),
+            models.Index(fields=["level"]),
+        ]
 
     def __str__(self):
         return self.name
