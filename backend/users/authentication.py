@@ -1,4 +1,3 @@
-
 # users/authentication.py
 from django.conf import settings
 from rest_framework.authentication import BaseAuthentication
@@ -12,7 +11,7 @@ class CustomJWTAuthentication(BaseAuthentication):
     def authenticate(self, request):
         auth = request.headers.get("Authorization", "")
         if not auth.startswith("Bearer "):
-            return None  # no auth header -> DRF continues (AllowAny or other perms decide)
+            return None
 
         token = auth.split(" ", 1)[1].strip()
         if not token:

@@ -267,6 +267,9 @@
 
       <div class="row g-2">
         <div class="col-md-4">
+          <!-- ✅ FIX: repTitle was missing -->
+          <label class="muted">عنوان گزارش</label>
+          <input id="repTitle" class="form-control" placeholder="مثلاً گزارش آتش‌سوزی - هفته دوم">
         </div>
         <div class="col-md-6">
           <label class="muted">توضیحات (اختیاری)</label>
@@ -581,7 +584,7 @@
     const fd = new FormData();
     fd.append("title", title);
     fd.append("description", desc);
-    fd.append("type", type);
+    fd.append("subsystem", type);  // ✅ FIX: backend expects "subsystem"
     fd.append("file", file);
 
     uploadHint.textContent = "در حال آپلود...";

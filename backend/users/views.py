@@ -3,6 +3,8 @@ from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser
+
 
 from .models import *
 from .serializers import *
@@ -10,6 +12,7 @@ from .jwt_utils import create_access_token
 from rest_framework.permissions import IsAuthenticated, BasePermission  
 from django.db.models import Count, Q
 from .permissions import IsRoleAdmin, IsManagerOrAdmin
+
 
 
 class RegisterAPIView(generics.CreateAPIView):
@@ -445,3 +448,102 @@ class AdminStatsAPIView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class ReportUploadAPIView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        user = getattr(request, "user", None)
+
+        # جلوگیری از خطاهای is_authenticated و کنترل احراز هویت به سبک خودمون
+        if not user or not getattr(user, "id", None):
+            return Response({"detail": "ابتدا وارد شوید."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        role = (getattr(user, "role", "") or "").lower()
+        if role != "expert":
+            return Response({"detail": "شما دسترسی آپلود گزارش ندارید."}, status=status.HTTP_403_FORBIDDEN)
+
+        ser = ReportUploadSerializer(data=request.data)
+        if not ser.is_valid():
+            return Response(ser.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        report = ser.save(uploaded_by=user)
+
+        file_url = ""
+        try:
+            file_url = request.build_absolute_uri(report.file.url)
+        except Exception:
+            file_url = ""
+
+        return Response(
+            {
+                "detail": "گزارش با موفقیت آپلود شد.",
+                "report": {
+                    "id": report.id,
+                    "title": report.title,
+                    "subsystem": report.subsystem,
+                    "file_url": file_url,
+                    "created_at": report.created_at,
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )
+    
+
+
+class MyReportsAPIView(APIView):
+    """
+    GET /api/users/reports/my/
+    فقط expert: لیست گزارش‌های خودش
+    """
+    def get(self, request):
+        user = getattr(request, "user", None)
+        if not user or not getattr(user, "id", None):
+            return Response({"detail": "ابتدا وارد شوید."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        role = (getattr(user, "role", "") or "").lower()
+        if role != "expert":
+            return Response({"detail": "شما دسترسی مشاهده این بخش را ندارید."}, status=status.HTTP_403_FORBIDDEN)
+
+        q = (request.query_params.get("q") or "").strip()
+
+        qs = Report.objects.select_related("uploaded_by").filter(uploaded_by=user)
+
+        if q:
+            qs = qs.filter(
+                Q(title__icontains=q) |
+                Q(subsystem__icontains=q)
+            )
+
+        ser = ReportListSerializer(qs, many=True, context={"request": request})
+        return Response(ser.data, status=status.HTTP_200_OK)
+
+
+class ReportsListForManagerAPIView(APIView):
+    """
+    GET /api/users/reports/
+    فقط manager: لیست همه گزارش‌ها + سرچ q روی عنوان/زیرسامانه/نام کاربری آپلودکننده
+    """
+    def get(self, request):
+        user = getattr(request, "user", None)
+        if not user or not getattr(user, "id", None):
+            return Response({"detail": "ابتدا وارد شوید."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        role = (getattr(user, "role", "") or "").lower()
+        if role != "manager":
+            return Response({"detail": "شما دسترسی مشاهده گزارش‌ها را ندارید."}, status=status.HTTP_403_FORBIDDEN)
+
+        q = (request.query_params.get("q") or "").strip()
+
+        qs = Report.objects.select_related("uploaded_by").all()
+
+        if q:
+            qs = qs.filter(
+                Q(title__icontains=q) |
+                Q(subsystem__icontains=q) |
+                Q(uploaded_by__username__icontains=q)
+            )
+
+        ser = ReportListSerializer(qs, many=True, context={"request": request})
+        return Response(ser.data, status=status.HTTP_200_OK)

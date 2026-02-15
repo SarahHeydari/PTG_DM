@@ -171,3 +171,59 @@ class AdminUserListSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "username", "role", "email", "date_joined", "last_login"]
+
+
+
+
+
+
+class ReportUploadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
+        fields = ["title", "description", "subsystem", "file"]
+
+    def validate_file(self, f):
+        name = (getattr(f, "name", "") or "").lower()
+        ext = name.split(".")[-1] if "." in name else ""
+        allowed = {"pdf", "doc", "docx"}
+
+        if ext not in allowed:
+            raise serializers.ValidationError("فرمت فایل باید PDF یا Word (doc/docx) باشد.")
+
+        # اختیاری: محدودیت حجم (مثلاً 20MB)
+        max_size = 20 * 1024 * 1024
+        if getattr(f, "size", 0) > max_size:
+            raise serializers.ValidationError("حجم فایل بیش از ۲۰ مگابایت است.")
+
+        return f
+    
+
+
+class ReportListSerializer(serializers.ModelSerializer):
+    file_name = serializers.SerializerMethodField()
+    file_url = serializers.SerializerMethodField()
+    user = serializers.SerializerMethodField()  # uploader info
+
+    class Meta:
+        model = Report
+        fields = ["id", "title", "subsystem", "created_at", "file_name", "file_url", "user"]
+
+    def get_file_name(self, obj):
+        try:
+            return obj.file.name.split("/")[-1]
+        except Exception:
+            return ""
+
+    def get_file_url(self, obj):
+        request = self.context.get("request")
+        try:
+            url = obj.file.url
+            return request.build_absolute_uri(url) if request else url
+        except Exception:
+            return ""
+
+    def get_user(self, obj):
+        u = getattr(obj, "uploaded_by", None)
+        if not u:
+            return {"id": None, "username": None, "role": None}
+        return {"id": u.id, "username": u.username, "role": u.role}

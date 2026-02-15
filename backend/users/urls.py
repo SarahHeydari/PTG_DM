@@ -18,6 +18,9 @@ urlpatterns = [
     path("admin/users/create/", AdminUserCreateAPIView.as_view()),
     path("admin/users/<int:user_id>/", AdminUserDeleteAPIView.as_view()),
     path("admin/stats/", AdminStatsAPIView.as_view()),
+    path("reports/upload/", ReportUploadAPIView.as_view(), name="report-upload"),
+    path("reports/my/", MyReportsAPIView.as_view(), name="reports-my"),
+    path("reports/", ReportsListForManagerAPIView.as_view(), name="reports-manager-list"),
 
 
 

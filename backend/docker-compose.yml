@@ -1,0 +1,65 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: always
+    environment:
+      POSTGRES_DB: crisis_db
+      POSTGRES_USER: crisis_user
+      POSTGRES_PASSWORD: crisis_pass
+    volumes:
+      - postgis_data:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    env_file:
+      - .env
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - backend
+
+  web:
+    build: .
+    container_name: web
+
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - ./media:/app/media
+      - ./staticfiles:/app/staticfiles
+      - ./data:/app/data
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - minio
+    networks:
+      - backend
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./staticfiles:/staticfiles
+      - ./media:/media
+    depends_on:
+      - web
+    networks:
+      - backend
+
+volumes:
+  postgis_data:
+
+networks:
+  backend:
