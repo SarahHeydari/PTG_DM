@@ -1,1105 +1,1134 @@
-<!doctype html>
-<html lang="fa" dir="rtl">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>آتش | وضعیت جاری</title>
+{% extends "frontend/base.html" %}
+{% load static %}
 
-  <!-- Mazer CSS (CDN) -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/zuramai/mazer@docs/demo/assets/compiled/css/app.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/zuramai/mazer@docs/demo/assets/compiled/css/app-dark.css">
+{% block title %}آتش | وضعیت جاری{% endblock %}
 
-  <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+{% block extra_css %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;600;800;900&display=swap" rel="stylesheet">
 
-  <!-- Leaflet Draw -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/zuramai/mazer@docs/demo/assets/compiled/css/app.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/zuramai/mazer@docs/demo/assets/compiled/css/app-dark.css">
 
-  <style>
-    :root{
-      --navy:#111a4a;
-      --navy2:#0c1338;
-      --gold:#f59e0b;
-      --panel:#0f172a;
-      --panel2:#0b1220;
-      --muted:#94a3b8;
-      --line:rgba(148,163,184,.14);
-      --soft:rgba(255,255,255,.06);
-      --white: #fff;
-    }
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
 
-    html, body { height: 100%; margin: 0; }
-    body { background: var(--panel2); font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; }
+<style>
+  :root{
+    --navy:#111a4a; --navy2:#0c1338; --gold:#f59e0b;
+    --panel:#0f172a; --panel2:#0b1220; --muted:#94a3b8;
+    --line:rgba(148,163,184,.14); --white:#fff;
+  }
 
-    .topbar{
-      height: 64px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      padding:0 14px;
-      background: linear-gradient(90deg, var(--navy2), var(--navy));
-      color:#fff;
-      position:sticky;
-      top:0;
-      z-index:1200;
-      border-bottom: 1px solid rgba(255,255,255,.06);
-    }
-    .topbar .title{
-      font-weight:800;
-      letter-spacing:.2px;
-      display:flex;
-      align-items:center;
-      gap:10px;
-    }
-    .chip{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:6px 10px;
-      border-radius:999px;
-      background: rgba(255,255,255,.08);
-      border: 1px solid rgba(255,255,255,.10);
-      font-size:12px;
-      color:#e5e7eb;
-    }
-    .chip .dot{
-      width:8px; height:8px; border-radius:50%;
-      background: #22c55e;
-      box-shadow: 0 0 0 3px rgba(34,197,94,.12);
-    }
+  html, body { height: 100%; margin: 0; }
+  body{
+    background: var(--panel2);
+    font-family: "Vazirmatn", system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+    direction: rtl;
+  }
 
-    .app-shell{
-      height: calc(100vh - 64px);
-      position: relative;
-      background: var(--panel2);
-    }
-    #map{ height:100%; width:100%; }
+  .topbar{
+    height: 64px; display:flex; align-items:center; justify-content:space-between;
+    padding:0 14px; background: linear-gradient(90deg, var(--navy2), var(--navy));
+    color:#fff; position:sticky; top:0; z-index:1200;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+  .topbar .title{ font-weight:900; display:flex; align-items:center; gap:10px; }
+  .chip{
+    display:inline-flex; align-items:center; gap:8px; padding:6px 10px;
+    border-radius:999px; background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.10); font-size:12px; color:#e5e7eb;
+  }
+  .chip .dot{
+    width:8px; height:8px; border-radius:50%; background:#22c55e;
+    box-shadow: 0 0 0 3px rgba(34,197,94,.12);
+  }
 
-    /* Custom left toolbar (ONLY ours) */
-    .left-tools{
-      position:absolute;
-      top: 16px;
-      left: 16px;
-      z-index: 1100;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
-    .tool-btn{
-      width: 42px;
-      height: 42px;
-      border-radius: 12px;
-      background: linear-gradient(180deg, rgba(17,26,74,.96), rgba(12,19,56,.96));
-      border: 1px solid rgba(255,255,255,.08);
-      box-shadow: 0 10px 28px rgba(0,0,0,.25);
-      display:grid;
-      place-items:center;
-      cursor:pointer;
-      user-select:none;
-      color:#e5e7eb;
-      font-weight:800;
-      transition: transform .12s ease, filter .12s ease;
-    }
-    .tool-btn:hover{ transform: translateY(-1px); filter: brightness(1.05); }
-    .tool-btn:active{ transform: translateY(0px); }
-    .tool-btn small{ font-weight:700; font-size:11px; opacity:.9; }
-    .tool-btn.gold{
-      background: linear-gradient(180deg, rgba(245,158,11,.98), rgba(217,119,6,.98));
-      color:#1f2937;
-      border: 1px solid rgba(0,0,0,.08);
-    }
+  .app-shell{ height: calc(100vh - 64px); position: relative; background: var(--panel2); }
+  #map{ height:100%; width:100%; }
 
-    /* Sidebar (drawer) */
-    .sidebar{
-      position:absolute;
-      top: 12px;
-      right: 12px;
-      z-index: 1150;
-      width: 380px;
-      max-height: calc(100% - 24px);
-      background: rgba(15,23,42,.88);
-      border: 1px solid rgba(255,255,255,.08);
-      box-shadow: 0 12px 40px rgba(0,0,0,.35);
-      border-radius: 14px;
-      overflow:hidden;
-      display:flex;
-      flex-direction:column;
-      backdrop-filter: blur(10px);
-      transform: translateX(0);
-      transition: transform .18s ease;
-    }
-    .sidebar.collapsed{
-      transform: translateX(calc(100% - 52px));
-    }
+  /* left tools (smaller) */
+  .left-tools{
+    position:absolute; top: 16px; left: 16px; z-index: 1100;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .tool-btn{
+    width: 38px; height: 38px; border-radius: 12px;
+    background: linear-gradient(180deg, rgba(17,26,74,.96), rgba(12,19,56,.96));
+    border: 1px solid rgba(255,255,255,.08);
+    box-shadow: 0 10px 28px rgba(0,0,0,.25);
+    display:grid; place-items:center; cursor:pointer; user-select:none;
+    color:#e5e7eb; font-weight:900;
+    transition: transform .12s ease, filter .12s ease;
+    font-size: 14px;
+  }
+  .tool-btn:hover{ transform: translateY(-1px); filter: brightness(1.05); }
+  .tool-btn.gold{
+    background: linear-gradient(180deg, rgba(245,158,11,.98), rgba(217,119,6,.98));
+    color:#1f2937; border: 1px solid rgba(0,0,0,.08);
+  }
+  .tool-btn small{ font-weight:900; font-size:11px; }
 
-    .sidebar-header{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      padding: 10px 12px;
-      background: rgba(255,255,255,.04);
-      border-bottom: 1px solid var(--line);
-    }
-    .sidebar-header .h{
-      color:#e5e7eb;
-      font-weight:900;
-      font-size: 13px;
-      letter-spacing:.2px;
-      display:flex;
-      align-items:center;
-      gap:10px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .sidebar-header .sub{
-      color: var(--muted);
-      font-size: 11px;
-      margin-top:2px;
-    }
-    .sidebar-toggle{
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      display:grid;
-      place-items:center;
-      cursor:pointer;
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.08);
-      color:#e5e7eb;
-      font-weight:900;
-      user-select:none;
-    }
+  /* sidebar */
+  .sidebar{
+    position:absolute; top: 12px; right: 12px; z-index: 1150;
+    width: 392px; max-height: calc(100% - 24px);
+    background: rgba(15,23,42,.88);
+    border: 1px solid rgba(255,255,255,.08);
+    box-shadow: 0 12px 40px rgba(0,0,0,.35);
+    border-radius: 14px; overflow:hidden;
+    display:flex; flex-direction:column;
+    backdrop-filter: blur(10px);
+    transform: translateX(0);
+    transition: transform .18s ease;
+  }
+  /* ✅ fully off-screen */
+  .sidebar.collapsed{ transform: translateX(110%); }
 
-    .sidebar-body{
-      padding: 12px;
-      overflow:auto;
-    }
+  .sidebar-header{
+    position:relative;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px; padding: 10px 12px;
+    background: rgba(255,255,255,.04);
+    border-bottom: 1px solid var(--line);
+  }
+  .sidebar-header .h{ color:#e5e7eb; font-weight:900; font-size: 13px; }
+  .sidebar-header .sub{ color: var(--muted); font-size: 11px; margin-top:2px; }
+  /* ✅ toggle stays visible even when sidebar is collapsed */
+  .sidebar-toggle{
+    position:absolute;
+    left: -44px; top: 10px;
+    width: 36px; height: 36px; border-radius: 12px;
+    display:grid; place-items:center; cursor:pointer;
+    background: rgba(15,23,42,.92);
+    border: 1px solid rgba(255,255,255,.10);
+    color:#e5e7eb; font-weight:900; user-select:none;
+    box-shadow: 0 10px 28px rgba(0,0,0,.25);
+  }
+  .sidebar-body{ padding: 12px; overflow:auto; }
 
-    .section{
-      background: rgba(255,255,255,.04);
-      border: 1px solid rgba(255,255,255,.06);
-      border-radius: 12px;
-      padding: 10px;
-      margin-bottom: 10px;
-    }
-    .section-title{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      margin-bottom: 10px;
-    }
-    .section-title .t{
-      color:#e5e7eb;
-      font-weight:900;
-      font-size: 12px;
-      letter-spacing:.6px;
-      text-transform: uppercase;
-      opacity:.95;
-    }
-    .section-title .pill{
-      font-size: 11px;
-      color: var(--muted);
-      padding: 3px 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(148,163,184,.22);
-      background: rgba(2,6,23,.35);
-      white-space:nowrap;
-    }
+  .section{
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.06);
+    border-radius: 12px; padding: 10px; margin-bottom: 10px;
+  }
+  .section-title{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px; margin-bottom: 10px;
+  }
+  .section-title .t{
+    color:#e5e7eb; font-weight:900; font-size: 12px;
+    letter-spacing:.4px;
+  }
+  .section-title .pill{
+    font-size: 11px; color: var(--muted);
+    padding: 3px 8px; border-radius: 999px;
+    border: 1px solid rgba(148,163,184,.22);
+    background: rgba(2,6,23,.35);
+  }
+  .help{ color: var(--muted); font-size: 11px; line-height: 1.6; margin-top: 6px; }
 
-    .help{
-      color: var(--muted);
-      font-size: 11px;
-      line-height: 1.55;
-      margin-top: 6px;
-    }
+  .row2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field label{ color: rgba(229,231,235,.9); font-size: 12px; font-weight:700; }
+  .field input[type="number"], .field select, .field input[type="date"]{
+    height: 38px; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.10);
+    background: rgba(2,6,23,.35);
+    color:#e5e7eb;
+    padding: 0 10px;
+    outline:none;
+  }
+  .field input[type="file"]{
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.10);
+    background: rgba(2,6,23,.35);
+    color:#e5e7eb;
+    padding: 8px 10px;
+    outline:none;
+  }
 
-    .row2{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:10px;
-    }
-    label{
-      color:#e5e7eb;
-      font-size: 11px;
-      margin-bottom: 4px;
-      display:block;
-      opacity:.9;
-    }
+  /* Color picker like palette */
+  .color-row{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+  .color-wrap{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 8px 10px; border-radius: 12px;
+    background: rgba(2,6,23,.35);
+    border: 1px solid rgba(255,255,255,.06);
+  }
+  .color-wrap span{ color:#e5e7eb; font-size:12px; font-weight:800; }
 
-    select, input[type="date"], input[type="text"], input[type="number"]{
-      width:100%;
-      background: rgba(2,6,23,.45);
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 10px;
-      color:#e5e7eb;
-      padding: 8px 10px;
-      outline:none;
-      font-size: 12px;
-    }
+  /* ✅ CHANGE #1: circular + smaller color inputs */
+  .color-wrap input[type="color"]{
+    width: 30px; height: 30px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.16);
+    background: transparent;
+    padding:0;
+    cursor:pointer;
+    overflow:hidden;
+  }
+  /* (webkit) remove default square chrome */
+  .color-wrap input[type="color"]::-webkit-color-swatch-wrapper{ padding:0; }
+  .color-wrap input[type="color"]::-webkit-color-swatch{
+    border: none;
+    border-radius: 999px;
+  }
 
-    .btnx{
-      width:100%;
-      border:none;
-      border-radius: 10px;
-      padding: 10px 12px;
-      cursor:pointer;
-      font-weight:900;
-      font-size: 12px;
-      letter-spacing:.2px;
-    }
-    .btnx.primary{
-      background: linear-gradient(180deg, rgba(245,158,11,.98), rgba(217,119,6,.98));
-      color:#111827;
-    }
-    .btnx.secondary{
-      background: rgba(255,255,255,.06);
-      color:#e5e7eb;
-      border: 1px solid rgba(255,255,255,.10);
-    }
+  .btnx{
+    height: 40px; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.10);
+    background: rgba(255,255,255,.06);
+    color:#e5e7eb; cursor:pointer;
+    font-weight:900; font-size: 12px;
+  }
+  .btnx.primary{
+    background: rgba(245,158,11,.18);
+    border-color: rgba(245,158,11,.30);
+    color: #fbbf24;
+  }
+  .btnx.primary:hover{ background: rgba(245,158,11,.24); }
+  .btnx.secondary:hover{ background: rgba(255,255,255,.10); }
 
-    /* Base layer radios (checkbox look, radio logic) */
-    .radio-list{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
-    .radio-item{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding: 8px 10px;
-      border-radius: 12px;
-      background: rgba(2,6,23,.35);
-      border: 1px solid rgba(255,255,255,.06);
-    }
-    .radio-item .name{
-      color:#e5e7eb;
-      font-size: 12px;
-      font-weight:800;
-      display:flex;
-      align-items:center;
-      gap:8px;
-    }
-    .fake-box{
-      width: 16px;
-      height: 16px;
-      border-radius: 5px;
-      border: 1px solid rgba(255,255,255,.18);
-      background: rgba(255,255,255,.04);
-      display:inline-block;
-      position:relative;
-      flex: 0 0 auto;
-    }
-    .radio-item input{ display:none; }
-    .radio-item input:checked + .fake-box{
-      border-color: rgba(245,158,11,.85);
-      box-shadow: 0 0 0 3px rgba(245,158,11,.14);
-    }
-    .radio-item input:checked + .fake-box::after{
-      content:"";
-      position:absolute;
-      inset:3px;
-      border-radius: 3px;
-      background: rgba(245,158,11,.92);
-    }
+  /* Check list (vector) */
+  .check-list{ display:flex; flex-direction:column; gap:10px; }
+  .check-item{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding: 10px; border-radius: 12px;
+    background: rgba(2,6,23,.35);
+    border: 1px solid rgba(255,255,255,.06);
+  }
+  .check-item .txt{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .check-item .txt b{ color:#e5e7eb; font-size: 12px; }
+  .check-item .txt small{ color: var(--muted); font-size: 11px; direction:ltr; text-align:left; }
+  .cb{
+    width: 18px; height: 18px;
+    accent-color: var(--gold);
+    cursor:pointer;
+  }
 
-    /* Layers dropdown (hover) */
-    .layers-menu{
-      position:relative;
-      display:block;
-    }
-    .layers-trigger{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      padding: 10px;
-      border-radius: 12px;
-      background: rgba(2,6,23,.35);
-      border: 1px solid rgba(255,255,255,.06);
-      cursor: default;
-      user-select:none;
-      color:#e5e7eb;
-      font-weight:900;
-      font-size: 12px;
-    }
-    .layers-trigger span{ color: var(--muted); font-weight:700; font-size:11px; }
-    .layers-dropdown{
-      position:absolute;
-      top: 46px;
-      right: 0;
-      left: 0;
-      background: rgba(15,23,42,.95);
-      border: 1px solid rgba(255,255,255,.10);
-      border-radius: 12px;
-      box-shadow: 0 14px 45px rgba(0,0,0,.35);
-      padding: 8px;
-      display:none;
-      z-index: 2000;
-    }
-    .layers-menu:hover .layers-dropdown{
-      display:block;
-    }
-    .dd-item{
-      padding: 10px 10px;
-      border-radius: 10px;
-      cursor:pointer;
-      color:#e5e7eb;
-      font-weight:800;
-      font-size:12px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-    }
-    .dd-item:hover{
-      background: rgba(255,255,255,.06);
-    }
-    .dd-item .meta{
-      color: var(--muted);
-      font-weight:700;
-      font-size: 11px;
-    }
+  /* list for satellite/index results */
+  .list{ margin-top: 10px; display:flex; flex-direction:column; gap:8px; }
+  .item{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:10px 12px; border-radius:12px;
+    border:1px solid rgba(255,255,255,.08);
+    background: rgba(2,6,23,.28);
+  }
+  .item .meta{ min-width:0; }
+  .item .name{ font-size:13px; color:#e5e7eb; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:800; }
+  .item .sub{ font-size:11px; opacity:.75; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; direction:ltr; text-align:left; color:#cbd5e1; }
 
-    /* Layer list toggles */
-    .layer-list{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-    }
-    .layer-row{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      padding: 10px;
-      border-radius: 12px;
-      background: rgba(2,6,23,.35);
-      border: 1px solid rgba(255,255,255,.06);
-    }
-    .layer-row .txt{
-      display:flex;
-      flex-direction:column;
-      gap:2px;
-      min-width: 0;
-    }
-    .layer-row .txt b{
-      color:#e5e7eb;
-      font-size: 12px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .layer-row .txt small{
-      color: var(--muted);
-      font-size: 11px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .switch{
-      width: 44px;
-      height: 24px;
-      border-radius: 999px;
-      background: rgba(255,255,255,.10);
-      border: 1px solid rgba(255,255,255,.12);
-      position:relative;
-      cursor:pointer;
-      flex: 0 0 auto;
-    }
-    .switch::after{
-      content:"";
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: rgba(255,255,255,.90);
-      position:absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      right: 3px;
-      transition: right .14s ease, background .14s ease;
-    }
-    .switch.on{
-      background: rgba(245,158,11,.22);
-      border-color: rgba(245,158,11,.35);
-    }
-    .switch.on::after{
-      right: 23px;
-      background: rgba(245,158,11,.95);
-    }
+  .icon-btn{
+    width:34px; height:34px;
+    display:grid; place-items:center;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,.10);
+    background: rgba(255,255,255,.04);
+    cursor:pointer;
+  }
+  .icon-btn:hover{ background: rgba(255,255,255,.08); }
+  .icon-btn svg{ width:18px; height:18px; opacity:.9; }
+  .icon-btn.is-off svg{ opacity:.35; }
 
-    /* Keep Leaflet draw controls hidden (we use our toolbar button) */
-    .leaflet-draw{
-      display:none !important;
-    }
+  /* hazard marker (smaller + percent badge) */
+  .hazard-marker{ background: transparent; border:none; }
+  .haz{
+    position: relative;
+    width: 18px; height: 18px;
+  }
+  .haz .pct{
+    position:absolute;
+    left: 50%;
+    top: -10px;
+    transform: translateX(-50%);
+    padding: 2px 6px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 900;
+    background: rgba(11,18,32,.92);
+    border: 1px solid rgba(245,158,11,.45);
+    color: #fbbf24;
+    display:none;
+    white-space:nowrap;
+  }
+  .haz.show .pct{ display:block; }
 
-    /* Make Leaflet attribution subtle */
-    .leaflet-control-attribution{
-      background: rgba(0,0,0,.35) !important;
-      color: rgba(255,255,255,.75) !important;
-      border-radius: 10px !important;
-      border: 1px solid rgba(255,255,255,.10) !important;
-      padding: 4px 8px !important;
-    }
-  </style>
-</head>
+  .leaflet-draw{ display:none !important; }
+  .leaflet-control-attribution{
+    background: rgba(0,0,0,.35) !important;
+    color: rgba(255,255,255,.75) !important;
+    border-radius: 10px !important;
+    border: 1px solid rgba(255,255,255,.10) !important;
+    padding: 4px 8px !important;
+  }
+</style>
+{% endblock %}
 
-<body>
-  <div class="topbar">
-    <div class="title">
-      <span>وضعیت جاری آتش‌سوزی (دمو)</span>
-      <span class="chip"><span class="dot"></span> Auth: token ok</span>
-      <span class="chip">Fire</span>
-    </div>
-    <div style="opacity:.9;font-size:12px;color:#e5e7eb;">
-      Map Viewer + AOI + Layers
-    </div>
+{% block content %}
+<div class="topbar">
+  <div class="title">
+    <span>وضعیت جاری آتش‌سوزی (دمو)</span>
+    <span class="chip"><span class="dot"></span> Demo: Public layers</span>
+    <span class="chip">Fire</span>
+  </div>
+  <div style="opacity:.9;font-size:12px;color:#e5e7eb;">
+    Map Viewer + AOI + Layers
+  </div>
+</div>
+
+<div class="app-shell">
+  <div id="map"></div>
+
+  <div class="left-tools">
+    <div class="tool-btn" id="zoomIn" title="بزرگنمایی">+</div>
+    <div class="tool-btn" id="zoomOut" title="کوچکنمایی">−</div>
+    <div class="tool-btn" id="home" title="بازگشت به نمای ایران">⌂</div>
+    <div class="tool-btn gold" id="drawAOI" title="رسم محدوده (AOI)"><small>AOI</small></div>
+    <div class="tool-btn" id="clearAOI" title="حذف محدوده">🗑</div>
   </div>
 
-  <div class="app-shell">
-    <div id="map"></div>
-
-    <!-- ONLY our toolbar (Leaflet zoom removed) -->
-    <div class="left-tools">
-      <div class="tool-btn" id="zoomIn" title="بزرگنمایی">+</div>
-      <div class="tool-btn" id="zoomOut" title="کوچکنمایی">−</div>
-      <div class="tool-btn" id="home" title="بازگشت به نمای ایران">⌂</div>
-      <div class="tool-btn gold" id="drawAOI" title="رسم محدوده (AOI)"><small>AOI</small></div>
-      <div class="tool-btn" id="clearAOI" title="حذف محدوده">🗑</div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div>
+        <div class="h">پنل عملیات آتش‌سوزی (دمو)</div>
+        <div class="sub">Base + AOI + Layers</div>
+      </div>
+      <div class="sidebar-toggle" id="sidebarToggle" title="جمع/باز">❯</div>
     </div>
 
-    <!-- Sidebar Drawer -->
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <div>
-          <div class="h">پنل عملیات آتش‌سوزی (دمو)</div>
-          <div class="sub">Base + AOI + Layers</div>
+    <div class="sidebar-body">
+
+      <!-- BASEMAP -->
+      <div class="section">
+        <div class="section-title">
+          <div class="t">پایه نقشه (Base)</div>
+          <div class="pill">Radio</div>
         </div>
-        <div class="sidebar-toggle" id="sidebarToggle" title="جمع/باز">❯</div>
+
+        <div class="check-list">
+          <label class="check-item" style="cursor:pointer;">
+            <div class="txt">
+              <b>OSM</b>
+              <small>OpenStreetMap</small>
+            </div>
+            <input class="cb" type="radio" name="basemap" id="bm_osm" checked>
+          </label>
+
+          <label class="check-item" style="cursor:pointer;">
+            <div class="txt">
+              <b>Satellite (Esri)</b>
+              <small>World Imagery</small>
+            </div>
+            <input class="cb" type="radio" name="basemap" id="bm_sat">
+          </label>
+        </div>
+
+        <div class="help">فقط یکی از BaseMapها فعال است (Radio).</div>
       </div>
 
-      <div class="sidebar-body">
-
-        <!-- BASE (radio logic, checkbox look) -->
-        <div class="section">
-          <div class="section-title">
-            <div class="t">پایه نقشه (Base)</div>
-            <div class="pill">Radio Logic</div>
-          </div>
-
-          <div class="radio-list">
-            <label class="radio-item" style="cursor:pointer;">
-              <span class="name">OSM</span>
-              <span style="display:flex;align-items:center;gap:8px;">
-                <input type="radio" name="basemap" id="bm_osm" checked>
-                <span class="fake-box"></span>
-              </span>
-            </label>
-
-            <label class="radio-item" style="cursor:pointer;">
-              <span class="name">Satellite (Esri)</span>
-              <span style="display:flex;align-items:center;gap:8px;">
-                <input type="radio" name="basemap" id="bm_sat">
-                <span class="fake-box"></span>
-              </span>
-            </label>
-          </div>
-
-          <div class="help">
-            فقط یکی از BaseMapها می‌تواند فعال باشد (Radio). همزمان روشن نمی‌شوند.
-          </div>
+      <!-- AOI -->
+      <div class="section" id="aoiSection">
+        <div class="section-title">
+          <div class="t">محدوده عملیات (AOI)</div>
+          <div class="pill">DRAW → API</div>
         </div>
 
-        <!-- KML / DRAW (KEEP – do not touch UI logic) -->
-        <div class="section" id="kmlSection">
-          <div class="section-title">
-            <div class="t">محدوده عملیات (AOI)</div>
-            <div class="pill">KML / DRAW</div>
-          </div>
+        <div class="row2" style="margin-bottom:8px;">
+          <button class="btnx primary" id="saveAoiBtn">ثبت AOI</button>
+          <button class="btnx secondary" id="removeAoiBtn">حذف AOI</button>
+        </div>
 
-          <div class="row2" style="margin-bottom:8px;">
-            <button class="btnx primary" id="applyAoiBtn">اعمال روی لایه‌ها</button>
-            <button class="btnx secondary" id="removeAoiBtn">حذف محدوده</button>
-          </div>
-
+        <div class="field" style="margin-top:8px;">
           <label>آپلود KML</label>
-          <input type="file" id="kmlFile" accept=".kml" />
-
-          <div class="help">
-            فعلاً آپلود KML فقط برای نمایش روی نقشه است (API هنوز وصل نشده).  
-            ابزار رسم پلیگون از دکمه AOI سمت چپ قابل استفاده است.
-          </div>
+          <input type="file" id="kmlFile" accept=".kml">
+          <div class="help">KML را می‌خوانیم، یک Polygon ساده استخراج می‌کنیم و به AOI تبدیل می‌کنیم.</div>
         </div>
 
-        <!-- STYLE (used for vector overlays) -->
-        <div class="section" id="styleSection" style="display:none;">
-          <div class="section-title">
-            <div class="t">استایل لایه‌های برداری</div>
-            <div class="pill">STYLE</div>
-          </div>
-
-          <div class="row2">
-            <div>
-              <label>رنگ خط</label>
-              <input type="text" id="strokeColor" value="#22c55e" />
-            </div>
-            <div>
-              <label>رنگ پرکردن</label>
-              <input type="text" id="fillColor" value="#16a34a" />
-            </div>
-          </div>
-
-          <div class="row2" style="margin-top:10px;">
-            <div>
-              <label>ضخامت</label>
-              <input type="number" id="strokeWidth" value="2" min="1" max="10" />
-            </div>
-            <div>
-              <label>شفافیت</label>
-              <input type="number" id="fillOpacity" value="0.15" min="0" max="1" step="0.05" />
-            </div>
-          </div>
-
-          <button class="btnx secondary" style="margin-top:10px;" id="applyStyleBtn">اعمال استایل</button>
-          <div class="help">این استایل روی لایه‌های برداری فعال (استان/شهرستان/جنگل/...) اعمال می‌شود.</div>
+        <div class="help" id="aoiInfo" style="margin-top:10px;">
+          AOI فعلی: <span style="color:#fbbf24;font-weight:900;" id="aoiStatus">نداریم</span>
         </div>
-
-        <!-- Layers Dropdown + dynamic config -->
-        <div class="section">
-          <div class="section-title">
-            <div class="t">لایه‌ها</div>
-            <div class="pill">Hover Dropdown</div>
-          </div>
-
-          <div class="layers-menu">
-            <div class="layers-trigger">
-              انتخاب دسته لایه‌ها
-              <span>موس را نگه دار / Hover</span>
-            </div>
-
-            <div class="layers-dropdown" id="layersDropdown">
-              <div class="dd-item" data-panel="panel_sat">
-                تصاویر ماهواره‌ای
-                <span class="meta">Satellite</span>
-              </div>
-              <div class="dd-item" data-panel="panel_county">
-                مرز شهرستان‌ها
-                <span class="meta">Vector</span>
-              </div>
-              <div class="dd-item" data-panel="panel_province">
-                مرز استان‌ها
-                <span class="meta">Vector</span>
-              </div>
-              <div class="dd-item" data-panel="panel_forest">
-                جنگل‌ها
-                <span class="meta">Vector</span>
-              </div>
-              <div class="dd-item" data-panel="panel_index">
-                شاخص‌ها
-                <span class="meta">Index</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="help">
-            روی هر دسته کلیک کن تا تنظیمات همان دسته باز شود. چند لایه را می‌توانی همزمان روشن/خاموش کنی.
-          </div>
-        </div>
-
-        <!-- Dynamic Panels -->
-        <div class="section" id="panel_sat" style="display:none;">
-          <div class="section-title">
-            <div class="t">تصاویر ماهواره‌ای</div>
-            <div class="pill">SAT</div>
-          </div>
-
-          <div class="row2">
-            <div>
-              <label>نوع ماهواره</label>
-              <select id="satType">
-                <option value="sentinel2">Sentinel-2</option>
-                <option value="landsat8">Landsat 8</option>
-                <option value="landsat9">Landsat 9</option>
-              </select>
-            </div>
-            <div>
-              <label>تاریخ</label>
-              <input type="date" id="satDate" />
-            </div>
-          </div>
-
-          <button class="btnx primary" style="margin-top:10px;" id="loadSatBtn">نمایش لایه ماهواره</button>
-          <div class="help">
-            اتصال واقعی Raster معمولاً از GeoServer/tiles می‌آید. فعلاً این دکمه فقط ساختار را آماده می‌کند.
-          </div>
-
-          <div class="layer-list" style="margin-top:10px;">
-            <div class="layer-row">
-              <div class="txt">
-                <b>Satellite Layer</b>
-                <small id="satLayerMeta">خاموش</small>
-              </div>
-              <div class="switch" id="satSwitch" title="روشن/خاموش"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="section" id="panel_county" style="display:none;">
-          <div class="section-title">
-            <div class="t">مرز شهرستان‌ها</div>
-            <div class="pill">COUNTY</div>
-          </div>
-
-          <div class="layer-list">
-            <div class="layer-row">
-              <div class="txt">
-                <b>Iran Counties</b>
-                <small>برداری | API: /api/fire/counties/</small>
-              </div>
-              <div class="switch" id="countySwitch"></div>
-            </div>
-          </div>
-
-          <div class="help">با روشن کردن این لایه، استایل برداری هم فعال می‌شود.</div>
-        </div>
-
-        <div class="section" id="panel_province" style="display:none;">
-          <div class="section-title">
-            <div class="t">مرز استان‌ها</div>
-            <div class="pill">PROVINCE</div>
-          </div>
-
-          <div class="layer-list">
-            <div class="layer-row">
-              <div class="txt">
-                <b>Iran Provinces</b>
-                <small>برداری | API: /api/fire/provinces/</small>
-              </div>
-              <div class="switch" id="provinceSwitch"></div>
-            </div>
-          </div>
-
-          <div class="help">اگر همزمان استان + شهرستان روشن باشند هر دو روی هم نمایش داده می‌شوند.</div>
-        </div>
-
-        <div class="section" id="panel_forest" style="display:none;">
-          <div class="section-title">
-            <div class="t">جنگل‌ها</div>
-            <div class="pill">FOREST</div>
-          </div>
-
-          <div class="layer-list">
-            <div class="layer-row">
-              <div class="txt">
-                <b>Iran Forests</b>
-                <small>برداری | API: /api/fire/forests/</small>
-              </div>
-              <div class="switch" id="forestSwitch"></div>
-            </div>
-          </div>
-
-          <div class="help">برای جنگل‌ها هم استایل برداری کاربردی است.</div>
-        </div>
-
-        <div class="section" id="panel_index" style="display:none;">
-          <div class="section-title">
-            <div class="t">شاخص‌ها</div>
-            <div class="pill">INDEX</div>
-          </div>
-
-          <div class="row2">
-            <div>
-              <label>تاریخ</label>
-              <input type="date" id="idxDate" />
-            </div>
-            <div>
-              <label>نوع ماهواره</label>
-              <select id="idxSat">
-                <option value="sentinel2">Sentinel-2</option>
-                <option value="landsat8">Landsat 8</option>
-              </select>
-            </div>
-          </div>
-
-          <div style="margin-top:10px;">
-            <label>نوع شاخص‌ها (چند انتخابی)</label>
-            <div class="layer-list">
-              <div class="layer-row">
-                <div class="txt"><b>NDVI</b><small>پوشش گیاهی</small></div>
-                <div class="switch" data-index="NDVI"></div>
-              </div>
-              <div class="layer-row">
-                <div class="txt"><b>NBR</b><small>سوختگی/آتش</small></div>
-                <div class="switch" data-index="NBR"></div>
-              </div>
-              <div class="layer-row">
-                <div class="txt"><b>NDMI</b><small>رطوبت</small></div>
-                <div class="switch" data-index="NDMI"></div>
-              </div>
-            </div>
-          </div>
-
-          <button class="btnx primary" style="margin-top:10px;" id="applyIndexBtn">اعمال شاخص‌ها</button>
-          <div class="help">
-            ساختار آماده است. اتصال رستری واقعی معمولاً از GeoServer/MinIO می‌آید (بعداً به API وصل می‌کنیم).
-          </div>
-        </div>
-
       </div>
-    </aside>
-  </div>
 
-  <!-- Leaflet -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+      <!-- VECTOR LAYERS (checkboxes) -->
+      <div class="section">
+        <div class="section-title">
+          <div class="t">لایه‌های برداری</div>
+          <div class="pill">Vector</div>
+        </div>
 
-  <!-- Leaflet Draw -->
-  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+        <div class="check-list">
+          <label class="check-item">
+            <div class="txt">
+              <b>شهرستان‌ها</b>
+              <small>/api/fire/counties/</small>
+            </div>
+            <input class="cb" type="checkbox" id="cb_county">
+          </label>
 
-  <!-- Optional: KML parsing (simple) -->
-  <script>
-    // -------------------------
-    // Map init (NO Leaflet default zoom control)
-    // -------------------------
-    const map = L.map('map', { zoomControl: false }).setView([32.0, 53.0], 5);
+          <label class="check-item">
+            <div class="txt">
+              <b>جنگل‌ها</b>
+              <small>/api/fire/forests/</small>
+            </div>
+            <input class="cb" type="checkbox" id="cb_forest">
+          </label>
 
-    // Base layers
-    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap'
-    });
+          <label class="check-item">
+            <div class="txt">
+              <b>نقاط مستعد آتش‌سوزی</b>
+              <small>/api/fire/fire-risk/</small>
+            </div>
+            <input class="cb" type="checkbox" id="cb_risk" checked>
+          </label>
+        </div>
 
-    const esriSat = L.tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      { maxZoom: 19, attribution: '&copy; Esri' }
-    );
+        <div class="help">برای استایل‌دهی، اول یک لایه وکتوری را انتخاب کن.</div>
+      </div>
 
-    osm.addTo(map);
+      <!-- STYLE (palette + per-layer + live) -->
+      <div class="section" id="styleSection" style="display:none;">
+        <div class="section-title">
+          <div class="t">استایل لایه وکتوری</div>
+          <div class="pill">LIVE</div>
+        </div>
 
-    // Scale
-    L.control.scale({ position: 'bottomleft' }).addTo(map);
+        <div class="field" style="margin-bottom:10px;">
+          <label>لایه‌ی هدف</label>
+          <select id="styleTarget">
+            <option value="county">شهرستان‌ها</option>
+            <option value="forest">جنگل‌ها</option>
+          </select>
+          <div class="help">تغییرات فقط روی همین لایه اعمال می‌شود.</div>
+        </div>
 
-    // -------------------------
-    // Our toolbar buttons
-    // -------------------------
-    document.getElementById('zoomIn').onclick = () => map.zoomIn();
-    document.getElementById('zoomOut').onclick = () => map.zoomOut();
-    document.getElementById('home').onclick = () => map.setView([32.0, 53.0], 5);
+        <div class="color-row">
+          <div class="color-wrap">
+            <span>Fill</span>
+            <input type="color" id="fillColor" value="#60a5fa">
+          </div>
+          <div class="color-wrap">
+            <span>Stroke</span>
+            <input type="color" id="strokeColor" value="#3b82f6">
+          </div>
+        </div>
 
-    // -------------------------
-    // Sidebar drawer toggle
-    // -------------------------
-    const sidebar = document.getElementById('sidebar');
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    sidebarToggle.addEventListener('click', () => {
-      sidebar.classList.toggle('collapsed');
-      sidebarToggle.textContent = sidebar.classList.contains('collapsed') ? '❮' : '❯';
-    });
+        <div class="row2" style="margin-top:10px;">
+          <div class="field">
+            <label>Opacity (0 تا 1)</label>
+            <input type="number" id="fillOpacity" value="0.15" min="0" max="1" step="0.05">
+          </div>
+          <div class="field">
+            <label>ضخامت</label>
+            <input type="number" id="strokeWidth" value="2" min="1" max="10" step="1">
+          </div>
+        </div>
 
-    // -------------------------
-    // BaseMap radio logic
-    // -------------------------
-    const bmOSM = document.getElementById('bm_osm');
-    const bmSAT = document.getElementById('bm_sat');
+        <div class="help" style="margin-top:10px;">
+          بدون دکمه؛ هر تغییر همین لحظه اعمال می‌شود.
+        </div>
+      </div>
 
-    function setBasemap(which){
-      if(which === 'osm'){
-        if(map.hasLayer(esriSat)) map.removeLayer(esriSat);
-        if(!map.hasLayer(osm)) osm.addTo(map);
-      } else {
-        if(map.hasLayer(osm)) map.removeLayer(osm);
-        if(!map.hasLayer(esriSat)) esriSat.addTo(map);
-      }
+      <!-- SATELLITE -->
+      <div class="section">
+        <div class="section-title">
+          <div class="t">تصاویر ماهواره‌ای</div>
+          <div class="pill">List</div>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label>ماهواره</label>
+            <select id="satellite_name">
+              <option value="">همه</option>
+              <option value="SENTINEL2">Sentinel-2</option>
+              <option value="LANDSAT8">Landsat-8</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>نمایش AOI کنار تاریخ</label>
+            <select id="showAoiMeta">
+              <option value="1" selected>روشن</option>
+              <option value="0">خاموش</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row2" style="margin-top:10px;">
+          <div class="field">
+            <label>از تاریخ</label>
+            <input id="date_from" type="date">
+          </div>
+          <div class="field">
+            <label>تا تاریخ</label>
+            <input id="date_to" type="date">
+          </div>
+        </div>
+
+        <button id="btn-load-sat" class="btnx primary" style="margin-top:10px; width:100%;">نمایش لیست</button>
+        <div id="sat-list" class="list"></div>
+      </div>
+
+      <!-- INDEX -->
+      <div class="section">
+        <div class="section-title">
+          <div class="t">شاخص‌ها</div>
+          <div class="pill">List</div>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label>شاخص</label>
+            <select id="index_name">
+              <option value="">همه</option>
+              <option value="NBR">NBR</option>
+              <option value="NDVI">NDVI</option>
+              <option value="LST">LST</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>ماهواره</label>
+            <select id="index_satellite">
+              <option value="">همه</option>
+              <option value="SENTINEL2">Sentinel-2</option>
+              <option value="LANDSAT8">Landsat-8</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:10px;">
+          <label>تاریخ</label>
+          <input id="index_date" type="date">
+        </div>
+
+        <button id="btn-load-index" class="btnx primary" style="margin-top:10px; width:100%;">نمایش لیست</button>
+        <div id="idx-list" class="list"></div>
+      </div>
+
+    </div>
+  </aside>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+
+<script>
+  // ---------------------------
+  // API base + JWT
+  // ---------------------------
+  const API_BASE = "/api/fire";
+  function getToken(){
+    try{ return localStorage.getItem("token"); }catch(e){ return null; }
+  }
+  async function apiFetch(url, opts={}){
+    const headers = new Headers(opts.headers || {});
+    const tok = getToken();
+    if(tok) headers.set("Authorization", "Bearer " + tok);
+    return fetch(url, { ...opts, headers, cache: "no-store" });
+  }
+
+  // ---------------------------
+  // Defaults for date (last 30 days)
+  // ---------------------------
+  function pad2(n){ return String(n).padStart(2,"0"); }
+  function toDateInput(d){
+    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  }
+  (function initDates(){
+    const to = new Date();
+    const from = new Date();
+    from.setDate(to.getDate() - 30);
+    const df = document.getElementById("date_from");
+    const dt = document.getElementById("date_to");
+    if(df) df.value = toDateInput(from);
+    if(dt) dt.value = toDateInput(to);
+  })();
+
+  // ---------------------------
+  // Leaflet map
+  // ---------------------------
+  const map = L.map("map", { zoomControl: false }).setView([32.0, 53.0], 5);
+
+  const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19, attribution: "&copy; OpenStreetMap"
+  });
+
+  const esriSat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    maxZoom: 19, attribution: "&copy; Esri"
+  });
+
+  esriSat.addTo(map);
+  L.control.scale({ position: "bottomleft" }).addTo(map);
+
+  document.getElementById("zoomIn").onclick = () => map.zoomIn();
+  document.getElementById("zoomOut").onclick = () => map.zoomOut();
+  document.getElementById("home").onclick = () => map.setView([32.0, 53.0], 5);
+
+  // Sidebar toggle (fully hide)
+  const sidebar = document.getElementById("sidebar");
+  const sidebarToggle = document.getElementById("sidebarToggle");
+  sidebarToggle.addEventListener("click", () => {
+    sidebar.classList.toggle("collapsed");
+    sidebarToggle.textContent = sidebar.classList.contains("collapsed") ? "❮" : "❯";
+  });
+
+  // Basemap radios
+  const bmOSM = document.getElementById("bm_osm");
+  const bmSAT = document.getElementById("bm_sat");
+  function setBasemap(which){
+    if(which === "osm"){
+      if(map.hasLayer(esriSat)) map.removeLayer(esriSat);
+      if(!map.hasLayer(osm)) osm.addTo(map);
+    } else {
+      if(map.hasLayer(osm)) map.removeLayer(osm);
+      if(!map.hasLayer(esriSat)) esriSat.addTo(map);
     }
+  }
+  bmOSM.addEventListener("change", () => bmOSM.checked && setBasemap("osm"));
+  bmSAT.addEventListener("change", () => bmSAT.checked && setBasemap("sat"));
 
-    bmOSM.addEventListener('change', () => bmOSM.checked && setBasemap('osm'));
-    bmSAT.addEventListener('change', () => bmSAT.checked && setBasemap('sat'));
+  // ---------------------------
+  // AOI draw + API (BBox overlay removed)
+  // ---------------------------
+  const drawnItems = new L.FeatureGroup();
+  map.addLayer(drawnItems);
 
-    // -------------------------
-    // Hover dropdown -> click opens panel
-    // -------------------------
-    const panelIds = ['panel_sat','panel_county','panel_province','panel_forest','panel_index'];
-    function openPanel(id){
-      panelIds.forEach(pid => {
-        const el = document.getElementById(pid);
-        if(!el) return;
-        el.style.display = (pid === id) ? 'block' : 'none';
-      });
-      // show style section only if vector-related panels open (or any vector layer active)
-      refreshStyleVisibility();
+  let aoiGeoJSON = null;
+
+  function setAoiStatus(txt){
+    const el = document.getElementById("aoiStatus");
+    if(el) el.textContent = txt;
+  }
+
+  const drawControl = new L.Draw.Polygon(map, {
+    allowIntersection: false,
+    showArea: true,
+    shapeOptions: { color: "#f59e0b", weight: 2, fillColor: "#f59e0b", fillOpacity: 0.12 }
+  });
+
+  map.on(L.Draw.Event.CREATED, function (e) {
+    drawnItems.clearLayers();
+
+    const layer = e.layer;
+    drawnItems.addLayer(layer);
+
+    aoiGeoJSON = layer.toGeoJSON();
+    setAoiStatus("رسم شده");
+  });
+
+  document.getElementById("drawAOI").addEventListener("click", () => drawControl.enable());
+
+  function clearAOI(){
+    drawnItems.clearLayers();
+    aoiGeoJSON = null;
+    setAoiStatus("نداریم");
+  }
+
+  document.getElementById("clearAOI").addEventListener("click", clearAOI);
+  document.getElementById("removeAoiBtn").addEventListener("click", clearAOI);
+
+  document.getElementById("saveAoiBtn").addEventListener("click", async ()=>{
+    if(!aoiGeoJSON){
+      alert("اول AOI را رسم یا از KML وارد کن.");
+      return;
     }
-
-    document.querySelectorAll('.dd-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const pid = item.getAttribute('data-panel');
-        openPanel(pid);
-      });
-    });
-
-    // -------------------------
-    // AOI drawing (Leaflet.draw)
-    // -------------------------
-    const drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
-
-    const drawControl = new L.Draw.Polygon(map, {
-      allowIntersection: false,
-      showArea: true,
-      shapeOptions: {
-        color: '#f59e0b',
-        weight: 2,
-        fillColor: '#f59e0b',
-        fillOpacity: 0.12
-      }
-    });
-
-    const editControl = new L.EditToolbar.Edit(map, { featureGroup: drawnItems });
-    const deleteControl = new L.EditToolbar.Delete(map, { featureGroup: drawnItems });
-
-    let aoiGeoJSON = null;
-
-    function setAOIFromLayer(layer){
-      aoiGeoJSON = layer.toGeoJSON();
-    }
-
-    map.on(L.Draw.Event.CREATED, function (e) {
-      const layer = e.layer;
-      drawnItems.addLayer(layer);
-      // keep last AOI
-      setAOIFromLayer(layer);
-    });
-
-    document.getElementById('drawAOI').addEventListener('click', () => {
-      drawControl.enable();
-    });
-
-    document.getElementById('clearAOI').addEventListener('click', () => {
-      drawnItems.clearLayers();
-      aoiGeoJSON = null;
-    });
-
-    // Buttons inside AOI section (keep UI)
-    document.getElementById('removeAoiBtn').addEventListener('click', () => {
-      drawnItems.clearLayers();
-      aoiGeoJSON = null;
-    });
-
-    document.getElementById('applyAoiBtn').addEventListener('click', () => {
-      // placeholder: later send AOI to backend / store it
-      console.log("AOI applied:", aoiGeoJSON);
-      alert("AOI اعمال شد (دمو). اتصال به API بعداً انجام می‌شود.");
-    });
-
-    // -------------------------
-    // KML upload (simple display)
-    // (UI untouched; logic minimal)
-    // -------------------------
-    const kmlFileInput = document.getElementById('kmlFile');
-    let kmlLayer = null;
-
-    function parseKMLtoGeoJSON(kmlText){
-      // Very light parsing via DOMParser -> Leaflet doesn't read KML natively without a plugin.
-      // We'll just try to show a friendly message. Proper: use "omnivore" (mapbox) or "togeojson".
-      // Here: we keep it minimal and safe.
-      return null;
-    }
-
-    kmlFileInput.addEventListener('change', async (e) => {
-      const file = e.target.files?.[0];
-      if(!file) return;
-
-      const text = await file.text();
-      // For real parsing: include togeojson. For now, just notify.
-      alert("KML دریافت شد (دمو). برای نمایش دقیق KML، ماژول togeojson را اضافه می‌کنیم.");
-      console.log("KML text length:", text.length);
-    });
-
-    // -------------------------
-    // Vector layers (API -> GeoJSON)
-    // -------------------------
-    const vectorState = {
-      county: { on:false, layer:null },
-      province: { on:false, layer:null },
-      forest: { on:false, layer:null },
-    };
-
-    function getVectorStyle(){
-      const strokeColor = document.getElementById('strokeColor').value || '#22c55e';
-      const fillColor = document.getElementById('fillColor').value || '#16a34a';
-      const weight = Number(document.getElementById('strokeWidth').value || 2);
-      const fillOpacity = Number(document.getElementById('fillOpacity').value || 0.15);
-
-      return {
-        color: strokeColor,
-        weight,
-        fillColor,
-        fillOpacity
-      };
-    }
-
-    function refreshStyleVisibility(){
-      const anyVectorOn = vectorState.county.on || vectorState.province.on || vectorState.forest.on;
-      const styleSection = document.getElementById('styleSection');
-      styleSection.style.display = anyVectorOn ? 'block' : 'none';
-    }
-
-    async function fetchGeoJSON(url){
-      const res = await fetch(url, {
-        headers: {
-          // اگر JWT لازم داری اینجا اضافه کن
-          // "Authorization": `Bearer ${localStorage.getItem("access_token") || ""}`
-        }
+    try{
+      const res = await apiFetch(`${API_BASE}/aoi/`, {
+        method:"POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify({ name:"AOI", geometry: aoiGeoJSON.geometry })
       });
       if(!res.ok){
-        const txt = await res.text();
-        throw new Error(`API error ${res.status}: ${txt}`);
+        const t = await res.text();
+        throw new Error(t);
       }
-      return await res.json();
+      setAoiStatus("ثبت شد");
+      alert("AOI ثبت شد.");
+    }catch(e){
+      console.error(e);
+      alert("خطا در ثبت AOI.");
     }
+  });
 
-    function addVectorLayer(key, geojson){
-      // remove old if exists
-      if(vectorState[key].layer){
-        map.removeLayer(vectorState[key].layer);
+  // Load last AOI (if exists) and show by default
+  async function loadLastAOI(){
+    try{
+      const res = await apiFetch(`${API_BASE}/aoi/`);
+      if(!res.ok) return;
+      const data = await res.json();
+      const list = data.results || [];
+      if(!list.length) return;
+
+      const last = list[0];
+      if(!last.geometry) return;
+
+      const layer = L.geoJSON({ type:"Feature", properties:{}, geometry:last.geometry }, {
+        style:{ color:"#f59e0b", weight:2, fillColor:"#f59e0b", fillOpacity:0.12 }
+      });
+
+      drawnItems.clearLayers();
+      layer.eachLayer(l=> drawnItems.addLayer(l));
+      aoiGeoJSON = { type:"Feature", geometry:last.geometry, properties:{} };
+
+      setAoiStatus("بارگذاری شد");
+      try{
+        const b = drawnItems.getBounds();
+        if(b && b.isValid()) map.fitBounds(b, { padding:[20,20] });
+      }catch(e){}
+    }catch(e){}
+  }
+  loadLastAOI();
+
+  // KML upload -> extract a simple polygon
+  function parseKmlPolygonCoords(kmlText){
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(kmlText, "application/xml");
+    const coordsEl = xml.querySelector("Polygon coordinates, LinearRing coordinates, coordinates");
+    if(!coordsEl) return null;
+
+    const raw = coordsEl.textContent.trim();
+    const parts = raw.split(/\s+/).filter(Boolean);
+    const coords = parts.map(p=>{
+      const [lng, lat] = p.split(",").map(Number);
+      if(Number.isFinite(lat) && Number.isFinite(lng)) return [lng, lat];
+      return null;
+    }).filter(Boolean);
+
+    if(coords.length < 4) return null;
+    // ensure closed
+    const first = coords[0], last = coords[coords.length-1];
+    if(first[0] !== last[0] || first[1] !== last[1]) coords.push(first);
+
+    return coords;
+  }
+
+  document.getElementById("kmlFile").addEventListener("change", async (e)=>{
+    const file = e.target.files?.[0];
+    if(!file) return;
+
+    try{
+      const text = await file.text();
+      const ring = parseKmlPolygonCoords(text);
+      if(!ring){
+        alert("Polygon معتبر از KML پیدا نشد (فعلاً فقط Polygon ساده پشتیبانی می‌شود).");
+        return;
       }
 
-      const style = getVectorStyle();
-      const layer = L.geoJSON(geojson, {
-        style: () => style,
-        onEachFeature: (feature, lyr) => {
-          const name = feature?.properties?.name || feature?.properties?.NAME || "بدون نام";
-          lyr.bindPopup(name);
+      const geom = { type:"Polygon", coordinates:[ring] };
+      aoiGeoJSON = { type:"Feature", properties:{}, geometry: geom };
+
+      drawnItems.clearLayers();
+
+      const layer = L.geoJSON(aoiGeoJSON, {
+        style:{ color:"#f59e0b", weight:2, fillColor:"#f59e0b", fillOpacity:0.12 }
+      }).addTo(map);
+
+      layer.eachLayer(l=> drawnItems.addLayer(l));
+
+      setAoiStatus("از KML");
+      try{
+        const b = layer.getBounds();
+        if(b && b.isValid()) map.fitBounds(b, { padding:[20,20] });
+      }catch(e){}
+      alert("KML اعمال شد. حالا می‌تونی «ثبت AOI» بزنی.");
+    }catch(err){
+      console.error(err);
+      alert("خطا در خواندن KML.");
+    }
+  });
+
+  // ---------------------------
+  // Vector layers + LIVE style per selected layer
+  // ---------------------------
+  const vectorState = {
+    county: { on:false, layer:null, style:null },
+    forest: { on:false, layer:null, style:null },
+  };
+
+  function refreshStyleVisibility(){
+    const anyOn = vectorState.county.on || vectorState.forest.on;
+    const box = document.getElementById("styleSection");
+    if(box) box.style.display = anyOn ? "block" : "none";
+  }
+
+  function clamp(n, min, max){
+    n = Number(n);
+    if(Number.isNaN(n)) n = min;
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function getStyleFromUI(){
+    const stroke = document.getElementById("strokeColor")?.value || "#3b82f6";
+    const fill = document.getElementById("fillColor")?.value || "#60a5fa";
+    const weight = clamp(document.getElementById("strokeWidth")?.value ?? 2, 1, 10);
+    const fillOpacity = clamp(document.getElementById("fillOpacity")?.value ?? 0.15, 0, 1);
+    return { color: stroke, weight, fillColor: fill, fillOpacity, opacity: 0.95 };
+  }
+
+  function getSelectedStyleTarget(){
+    const sel = document.getElementById("styleTarget");
+    return sel ? sel.value : "county";
+  }
+  function setSelectedStyleTarget(key){
+    const sel = document.getElementById("styleTarget");
+    if(sel && key) sel.value = key;
+  }
+
+  function applyStyleToLayer(key){
+    if(!vectorState[key]) return;
+    const style = getStyleFromUI();
+    vectorState[key].style = style;
+    if(vectorState[key].layer){
+      try{ vectorState[key].layer.setStyle(style); }catch(e){}
+    }
+  }
+
+  function wireLiveStyle(){
+    const ids = ["strokeColor","fillColor","strokeWidth","fillOpacity"];
+    ids.forEach(id=>{
+      const el = document.getElementById(id);
+      if(!el) return;
+      el.addEventListener("input", ()=> applyStyleToLayer(getSelectedStyleTarget()));
+      el.addEventListener("change", ()=> applyStyleToLayer(getSelectedStyleTarget()));
+    });
+
+    const sel = document.getElementById("styleTarget");
+    if(sel){
+      sel.addEventListener("change", ()=>{
+        const k = getSelectedStyleTarget();
+        const st = vectorState[k]?.style;
+        if(st){
+          document.getElementById("strokeColor").value = st.color || "#3b82f6";
+          document.getElementById("fillColor").value = st.fillColor || "#60a5fa";
+          document.getElementById("strokeWidth").value = st.weight ?? 2;
+          document.getElementById("fillOpacity").value = st.fillOpacity ?? 0.15;
+        }
+      });
+    }
+  }
+  wireLiveStyle();
+
+  async function fetchGeoJSON(url){
+    const res = await apiFetch(url);
+    if(!res.ok){
+      const t = await res.text();
+      throw new Error(t);
+    }
+    return res.json();
+  }
+
+  function normalizeFeatureCollection(raw){
+    if(raw && raw.type === "FeatureCollection" && Array.isArray(raw.features)) return raw;
+    return { type:"FeatureCollection", features:[] };
+  }
+
+  function addVectorLayer(key, fc){
+    if(vectorState[key].layer) map.removeLayer(vectorState[key].layer);
+
+    const style = vectorState[key].style || getStyleFromUI();
+    vectorState[key].style = style;
+
+    const layer = L.geoJSON(normalizeFeatureCollection(fc), {
+      style: ()=> style,
+      onEachFeature: (feature, lyr)=>{
+        const nm = feature?.properties?.name || feature?.properties?.NAME || "بدون نام";
+        lyr.bindPopup(nm);
+      }
+    });
+
+    vectorState[key].layer = layer;
+    vectorState[key].on = true;
+    layer.addTo(map);
+    refreshStyleVisibility();
+
+    try{
+      const b = layer.getBounds();
+      if(b && b.isValid()) map.fitBounds(b, { padding:[20,20] });
+    }catch(e){}
+  }
+
+  function removeVectorLayer(key){
+    if(vectorState[key].layer) map.removeLayer(vectorState[key].layer);
+    vectorState[key].layer = null;
+    vectorState[key].on = false;
+    refreshStyleVisibility();
+  }
+
+  const cbCounty = document.getElementById("cb_county");
+  const cbForest = document.getElementById("cb_forest");
+
+  cbCounty.addEventListener("change", async ()=>{
+    if(cbCounty.checked){
+      setSelectedStyleTarget("county");
+      try{
+        const fc = await fetchGeoJSON(`${API_BASE}/counties/`);
+        addVectorLayer("county", fc);
+      }catch(e){
+        console.error(e);
+        alert("خطا در دریافت شهرستان‌ها.");
+        cbCounty.checked = false;
+        removeVectorLayer("county");
+      }
+    }else{
+      removeVectorLayer("county");
+    }
+  });
+
+  cbForest.addEventListener("change", async ()=>{
+    if(cbForest.checked){
+      setSelectedStyleTarget("forest");
+      try{
+        const fc = await fetchGeoJSON(`${API_BASE}/forests/`);
+        addVectorLayer("forest", fc);
+      }catch(e){
+        console.error(e);
+        alert("خطا در دریافت جنگل‌ها.");
+        cbForest.checked = false;
+        removeVectorLayer("forest");
+      }
+    }else{
+      removeVectorLayer("forest");
+    }
+  });
+
+  // ---------------------------
+  // Fire risk points
+  // ---------------------------
+  const riskState = {
+    on: true,
+    layer: null,
+    percentById: new Map()
+  };
+
+  function hazardIcon(percent, showPct){
+    const svg = `
+      <div class="haz ${showPct ? "show":""}">
+        <div class="pct">${percent}%</div>
+        <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+          <path d="M32 6 L60 56 H4 Z" fill="#facc15" stroke="#0b1220" stroke-width="5" />
+          <rect x="29" y="22" width="6" height="20" rx="3" fill="#0b1220"/>
+          <circle cx="32" cy="48" r="4" fill="#0b1220"/>
+        </svg>
+      </div>`;
+    return L.divIcon({
+      className: "hazard-marker",
+      html: svg,
+      iconSize: [18, 18],
+      iconAnchor: [9, 9]
+    });
+  }
+
+  function getRiskPercent(feature){
+    const id = feature?.properties?.id ?? feature?.properties?.ID ?? null;
+    if(id !== null && riskState.percentById.has(id)) return riskState.percentById.get(id);
+    const rnd = Math.floor(34 + Math.random() * (78 - 34 + 1));
+    if(id !== null) riskState.percentById.set(id, rnd);
+    return rnd;
+  }
+
+  function shouldShowPercent(){
+    return map.getZoom() >= 7;
+  }
+
+  async function loadRisk(){
+    try{
+      const fc = await fetchGeoJSON(`${API_BASE}/fire-risk/`);
+      if(riskState.layer) map.removeLayer(riskState.layer);
+
+      const layer = L.geoJSON(normalizeFeatureCollection(fc), {
+        pointToLayer: (feature, latlng)=>{
+          const pct = getRiskPercent(feature);
+          return L.marker(latlng, { icon: hazardIcon(pct, shouldShowPercent()) });
+        },
+        onEachFeature: (feature, lyr)=>{
+          const nm = feature?.properties?.name || "نقطه حساس";
+          const pct = getRiskPercent(feature);
+          lyr.bindPopup(`${nm}<br>ریسک: <b>${pct}%</b>`);
         }
       });
 
-      vectorState[key].layer = layer;
-      layer.addTo(map);
-      vectorState[key].on = true;
-      refreshStyleVisibility();
+      riskState.layer = layer;
+      if(riskState.on) layer.addTo(map);
+    }catch(e){
+      console.error(e);
     }
+  }
 
-    function removeVectorLayer(key){
-      if(vectorState[key].layer){
-        map.removeLayer(vectorState[key].layer);
+  const cbRisk = document.getElementById("cb_risk");
+  cbRisk.addEventListener("change", ()=>{
+    riskState.on = cbRisk.checked;
+    if(!riskState.layer) return;
+    if(riskState.on) riskState.layer.addTo(map);
+    else map.removeLayer(riskState.layer);
+  });
+
+  map.on("zoomend", ()=>{
+    if(!riskState.layer) return;
+    const show = shouldShowPercent();
+    riskState.layer.eachLayer(m=>{
+      if(!m?.getLatLng) return;
+      const f = m.feature;
+      const pct = getRiskPercent(f);
+      m.setIcon(hazardIcon(pct, show));
+    });
+  });
+
+  loadRisk();
+
+  // ---------------------------
+  // Satellite list (metadata)
+  // ---------------------------
+  const satState = new Map();
+  function isValidUrl(u){ return typeof u === "string" && u.startsWith("http"); }
+
+  function eyeBtn(isOn=true){
+    const cls = isOn ? "" : "is-off";
+    return `
+      <button class="icon-btn ${cls}" type="button" aria-label="toggle">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" stroke="currentColor" stroke-width="2"/>
+          <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+        </svg>
+      </button>
+    `;
+  }
+
+  function getAoiMetaText(){
+    if(document.getElementById("showAoiMeta")?.value !== "1") return "";
+    if(!aoiGeoJSON) return " | AOI: ندارد";
+    try{
+      const b = drawnItems.getBounds();
+      if(b && b.isValid()){
+        const sw = b.getSouthWest(), ne = b.getNorthEast();
+        return ` | AOI: [${sw.lat.toFixed(2)},${sw.lng.toFixed(2)}]-[${ne.lat.toFixed(2)},${ne.lng.toFixed(2)}]`;
       }
-      vectorState[key].layer = null;
-      vectorState[key].on = false;
-      refreshStyleVisibility();
-    }
+    }catch(e){}
+    return " | AOI: دارد";
+  }
 
-    // Apply style button
-    document.getElementById('applyStyleBtn').addEventListener('click', () => {
-      const style = getVectorStyle();
-      ['county','province','forest'].forEach(k => {
-        if(vectorState[k].layer){
-          vectorState[k].layer.setStyle(style);
-        }
+  function renderSatItem(item){
+    const on = satState.get(item.id) ?? false;
+    const name = item.image_name || "Unnamed";
+    const aoiMeta = getAoiMetaText();
+    const sub = `${item.satellite_name || ""} | ${item.date_time || ""}${aoiMeta}`;
+    const linkOk = isValidUrl(item.minio_link);
+
+    return `
+      <div class="item" data-id="${item.id}">
+        <div class="meta">
+          <div class="name">${name}</div>
+          <div class="sub">${sub}</div>
+          <div class="sub">${linkOk ? item.minio_link : "لینک نامعتبر"}</div>
+        </div>
+        ${eyeBtn(on)}
+      </div>
+    `;
+  }
+
+  function attachSatHandlers(container){
+    container.querySelectorAll(".item .icon-btn").forEach(btn=>{
+      btn.addEventListener("click", (e)=>{
+        const itemEl = e.target.closest(".item");
+        const id = Number(itemEl.getAttribute("data-id"));
+        const current = satState.get(id) ?? false;
+        satState.set(id, !current);
+        loadSatList();
       });
     });
+  }
 
-    // Switch helpers
-    function bindSwitch(el, onToggle){
-      el.addEventListener('click', () => {
-        el.classList.toggle('on');
-        onToggle(el.classList.contains('on'));
-      });
+  async function loadSatList(){
+    const satellite_name = document.getElementById("satellite_name")?.value || "";
+    const date_from = document.getElementById("date_from")?.value || "";
+    const date_to = document.getElementById("date_to")?.value || "";
+
+    const qs = new URLSearchParams();
+    if(satellite_name) qs.set("satellite_name", satellite_name);
+    if(date_from) qs.set("date_from", date_from);
+    if(date_to) qs.set("date_to", date_to);
+
+    const box = document.getElementById("sat-list");
+    if(!box) return;
+    box.innerHTML = "";
+
+    try{
+      const res = await apiFetch(`${API_BASE}/satellite-images/?${qs.toString()}`);
+      const data = await res.json();
+      const items = (data.results || []);
+      box.innerHTML = items.map(renderSatItem).join("");
+      attachSatHandlers(box);
+    }catch(e){
+      console.error(e);
+      box.innerHTML = `<div class="help">خطا در دریافت لیست</div>`;
     }
+  }
+  document.getElementById("btn-load-sat").addEventListener("click", loadSatList);
 
-    // County toggle
-    bindSwitch(document.getElementById('countySwitch'), async (isOn) => {
-      if(isOn){
-        try{
-          // اگر endpoint شما فرق دارد همین را عوض کن:
-          const geojson = await fetchGeoJSON('/api/fire/counties/');
-          addVectorLayer('county', geojson);
-        }catch(err){
-          console.error(err);
-          alert('خطا در دریافت شهرستان‌ها. لاگ را ببین.');
-          document.getElementById('countySwitch').classList.remove('on');
-        }
-      } else {
-        removeVectorLayer('county');
-      }
-    });
+  // ---------------------------
+  // Index list (metadata)
+  // ---------------------------
+  const idxState = new Map();
 
-    // Province toggle
-    bindSwitch(document.getElementById('provinceSwitch'), async (isOn) => {
-      if(isOn){
-        try{
-          const geojson = await fetchGeoJSON('/api/fire/provinces/');
-          addVectorLayer('province', geojson);
-        }catch(err){
-          console.error(err);
-          alert('خطا در دریافت استان‌ها. لاگ را ببین.');
-          document.getElementById('provinceSwitch').classList.remove('on');
-        }
-      } else {
-        removeVectorLayer('province');
-      }
-    });
+  function renderIdxItem(item){
+    const on = idxState.get(item.id) ?? false;
+    const name = item.title || "Unnamed";
+    const sub = `${item.index_name || ""} | ${item.satellite_name || ""} | ${item.date || ""}`;
+    const linkOk = isValidUrl(item.minio_link);
 
-    // Forest toggle
-    bindSwitch(document.getElementById('forestSwitch'), async (isOn) => {
-      if(isOn){
-        try{
-          const geojson = await fetchGeoJSON('/api/fire/forests/');
-          addVectorLayer('forest', geojson);
-        }catch(err){
-          console.error(err);
-          alert('خطا در دریافت جنگل‌ها. لاگ را ببین.');
-          document.getElementById('forestSwitch').classList.remove('on');
-        }
-      } else {
-        removeVectorLayer('forest');
-      }
-    });
+    return `
+      <div class="item" data-id="${item.id}">
+        <div class="meta">
+          <div class="name">${name}</div>
+          <div class="sub">${sub}</div>
+          <div class="sub">${linkOk ? item.minio_link : "لینک نامعتبر"}</div>
+        </div>
+        ${eyeBtn(on)}
+      </div>
+    `;
+  }
 
-    // -------------------------
-    // Satellite (placeholder toggle)
-    // -------------------------
-    const satSwitch = document.getElementById('satSwitch');
-    const satMeta = document.getElementById('satLayerMeta');
-    let satLayerOn = false;
-
-    bindSwitch(satSwitch, (isOn) => {
-      satLayerOn = isOn;
-      satMeta.textContent = isOn ? 'روشن (دمو) — اتصال Raster بعداً' : 'خاموش';
-      // later: add WMS/XYZ tile from geoserver
-    });
-
-    document.getElementById('loadSatBtn').addEventListener('click', () => {
-      const type = document.getElementById('satType').value;
-      const date = document.getElementById('satDate').value || 'بدون تاریخ';
-      satMeta.textContent = satLayerOn ? `روشن (دمو) — ${type} | ${date}` : `خاموش — ${type} | ${date}`;
-      alert('ساختار Satellite آماده است. اتصال به GeoServer/WMS را مرحله بعد انجام می‌دهیم.');
-    });
-
-    // -------------------------
-    // Indices (placeholder multi toggles)
-    // -------------------------
-    const indexSwitches = document.querySelectorAll('[data-index]');
-    const activeIndexes = new Set();
-
-    indexSwitches.forEach(sw => {
-      bindSwitch(sw, (isOn) => {
-        const name = sw.getAttribute('data-index');
-        if(isOn) activeIndexes.add(name);
-        else activeIndexes.delete(name);
+  function attachIdxHandlers(container){
+    container.querySelectorAll(".item .icon-btn").forEach(btn=>{
+      btn.addEventListener("click", (e)=>{
+        const itemEl = e.target.closest(".item");
+        const id = Number(itemEl.getAttribute("data-id"));
+        const current = idxState.get(id) ?? false;
+        idxState.set(id, !current);
+        loadIdxList();
       });
     });
+  }
 
-    document.getElementById('applyIndexBtn').addEventListener('click', () => {
-      const date = document.getElementById('idxDate').value || 'بدون تاریخ';
-      const sat = document.getElementById('idxSat').value;
-      alert(`شاخص‌ها (دمو): ${Array.from(activeIndexes).join(', ') || 'هیچ'} | ${sat} | ${date}\nاتصال به Raster/API مرحله بعد.`);
-      console.log({activeIndexes: Array.from(activeIndexes), sat, date, aoiGeoJSON});
-    });
+  async function loadIdxList(){
+    const index_name = document.getElementById("index_name")?.value || "";
+    const satellite_name = document.getElementById("index_satellite")?.value || "";
+    const date = document.getElementById("index_date")?.value || "";
 
-    // Default open: nothing (user chooses from hover)
-    // openPanel('panel_sat');
-  </script>
-</body>
-</html>
+    const qs = new URLSearchParams();
+    if(index_name) qs.set("index_name", index_name);
+    if(satellite_name) qs.set("satellite_name", satellite_name);
+    if(date) qs.set("date", date);
+
+    const box = document.getElementById("idx-list");
+    if(!box) return;
+    box.innerHTML = "";
+
+    try{
+      const res = await apiFetch(`${API_BASE}/index-layers/?${qs.toString()}`);
+      const data = await res.json();
+      const items = (data.results || []);
+      box.innerHTML = items.map(renderIdxItem).join("");
+      attachIdxHandlers(box);
+    }catch(e){
+      console.error(e);
+      box.innerHTML = `<div class="help">خطا در دریافت لیست</div>`;
+    }
+  }
+  document.getElementById("btn-load-index").addEventListener("click", loadIdxList);
+
+  cbRisk.checked = true;
+</script>
+{% endblock %}

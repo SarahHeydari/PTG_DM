@@ -1,228 +1,215 @@
-# fire/views.py
+# fire/api_views.py
 import json
-from django.utils.dateparse import parse_date
-from django.contrib.gis.geos import GEOSGeometry, Polygon
-from rest_framework import viewsets, status
+from django.db import connection
+from django.utils.dateparse import parse_datetime, parse_date
+from django.contrib.gis.geos import GEOSGeometry
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny
+from rest_framework import status
 
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.filters import OrderingFilter
-
-from users.authentication import JWTAuthentication
-
-from .models import (
-    IndexLayer, SatelliteImage,
-    IranProvince, IranCounty, IranForest,
-    AOI, FireRiskArea
-)
-from .serializers import (
-    IndexLayerSerializer, SatelliteImageSerializer,
-    IranProvinceSerializer, IranCountySerializer, IranForestSerializer,
-    AOISerializer, FireRiskAreaSerializer
-)
-
-# ---------- helpers ----------
-def _parse_bbox(request):
-    """
-    bbox=minx,miny,maxx,maxy  (WGS84 / EPSG:4326)
-    """
-    bbox = request.query_params.get("bbox")
-    if not bbox:
-        return None
-    try:
-        parts = [float(x.strip()) for x in bbox.split(",")]
-        if len(parts) != 4:
-            return None
-        minx, miny, maxx, maxy = parts
-        if minx >= maxx or miny >= maxy:
-            return None
-        return Polygon.from_bbox((minx, miny, maxx, maxy))
-    except Exception:
-        return None
+from .models import AOI, SatelliteImage, IndexLayer
 
 
-def _apply_aoi_filter(qs, request):
-    aoi_id = request.query_params.get("aoi_id")
-    if not aoi_id:
-        return qs
-    try:
-        aoi = AOI.objects.get(id=int(aoi_id))
-        return qs.filter(geometry__intersects=aoi.geometry)
-    except Exception:
-        return qs
+def feature_collection_from_sql(sql, params=None):
+    params = params or []
+    with connection.cursor() as cursor:
+        cursor.execute(sql, params)
+        rows = cursor.fetchall()
+
+    features = []
+    for props_json, geom_json in rows:
+        props = json.loads(props_json)
+        geom = json.loads(geom_json)
+        features.append({
+            "type": "Feature",
+            "properties": props,
+            "geometry": geom
+        })
+
+    return {"type": "FeatureCollection", "features": features}
 
 
-def _apply_bbox_filter(qs, request):
-    bbox_poly = _parse_bbox(request)
-    if not bbox_poly:
-        return qs
-    # فقط رکوردهایی که geometry دارند، قابل فیلتر مکانی‌اند
-    return qs.filter(geometry__isnull=False, geometry__intersects=bbox_poly)
-
-
-# ---------- views ----------
-class FireCatalogAPIView(APIView):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
+class CountiesGeoJSONAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
 
     def get(self, request):
-        data = {
-            "vectors": [
-                {"key": "provinces", "title": "مرز استان‌ها"},
-                {"key": "counties", "title": "مرز شهرستان‌ها"},
-                {"key": "forests", "title": "جنگل‌ها"},
-                {"key": "fire_risk", "title": "مناطق مستعد آتش‌سوزی"},
-            ],
-            "indexes": [
-                {"key": "ndvi", "title": "NDVI"},
-                {"key": "nbr", "title": "NBR"},
-                {"key": "ndmi", "title": "NDMI"},
-            ],
-            "satellites": [
-                {"key": "sentinel2", "title": "Sentinel-2"},
-                {"key": "landsat8", "title": "Landsat-8"},
-            ],
-        }
-        return Response(data)
+        sql = """
+        SELECT
+          json_build_object('id', id, 'name', name)::text,
+          ST_AsGeoJSON(geometry::geometry)::text
+        FROM iran_counties;
+        """
+        return Response(feature_collection_from_sql(sql))
 
 
-class AOIViewSet(viewsets.ModelViewSet):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-    queryset = AOI.objects.all().order_by("-id")
-    serializer_class = AOISerializer
+class ForestsGeoJSONAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
 
-    def create(self, request, *args, **kwargs):
-        name = request.data.get("name") or "AOI"
-        source = request.data.get("source") or "draw"
-        geom_geojson = request.data.get("geometry")
+    def get(self, request):
+        sql = """
+        SELECT
+          json_build_object('id', id, 'name', name)::text,
+          ST_AsGeoJSON(geometry::geometry)::text
+        FROM iran_forests;
+        """
+        return Response(feature_collection_from_sql(sql))
 
-        if not geom_geojson:
-            return Response({"detail": "geometry is required (GeoJSON Polygon)."}, status=400)
+
+class FireRiskGeoJSONAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        sql = """
+        SELECT
+          json_build_object('id', id, 'name', name, 'level', level)::text,
+          ST_AsGeoJSON(geometry::geometry)::text
+        FROM fire_risk_areas;
+        """
+        return Response(feature_collection_from_sql(sql))
+
+
+class AOIAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        qs = AOI.objects.all()
+        results = []
+        for obj in qs:
+            results.append({
+                "id": obj.id,
+                "name": obj.name,
+                "source": obj.source,
+                "created_at": obj.created_at,
+                "geometry": json.loads(obj.geometry.geojson)
+            })
+        return Response({"results": results})
+
+    def post(self, request):
+        name = request.data.get("name", "AOI")
+        geometry = request.data.get("geometry")
+
+        if not geometry:
+            return Response({"detail": "geometry (GeoJSON Polygon) is required."},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            geom = GEOSGeometry(json.dumps(geom_geojson), srid=4326)
+            geos = GEOSGeometry(json.dumps(geometry), srid=4326)
+            if geos.geom_type != "Polygon":
+                return Response({"detail": "Only Polygon geometry is allowed."},
+                                status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            return Response({"detail": "Invalid geometry.", "error": str(e)}, status=400)
+            return Response({"detail": f"Invalid geometry: {str(e)}"},
+                            status=status.HTTP_400_BAD_REQUEST)
 
-        if geom.geom_type != "Polygon":
-            return Response({"detail": "Only Polygon is supported."}, status=400)
+        obj = AOI.objects.create(name=name, source="draw", geometry=geos)
 
-        obj = AOI.objects.create(name=name, source=source, geometry=geom)
-        return Response(self.get_serializer(obj).data, status=status.HTTP_201_CREATED)
-
-
-class IranProvinceViewSet(viewsets.ReadOnlyModelViewSet):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-    queryset = IranProvince.objects.all().order_by("name")
-    serializer_class = IranProvinceSerializer
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        qs = _apply_bbox_filter(qs, self.request)
-        qs = _apply_aoi_filter(qs, self.request)
-        return qs
+        return Response({
+            "id": obj.id,
+            "name": obj.name,
+            "source": obj.source,
+            "created_at": obj.created_at,
+            "geometry": json.loads(obj.geometry.geojson)
+        }, status=status.HTTP_201_CREATED)
 
 
-class IranCountyViewSet(viewsets.ReadOnlyModelViewSet):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-    queryset = IranCounty.objects.all().order_by("name")
-    serializer_class = IranCountySerializer
+class AOIDetailAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
 
-    def get_queryset(self):
-        qs = super().get_queryset()
-        qs = _apply_bbox_filter(qs, self.request)
-        qs = _apply_aoi_filter(qs, self.request)
-        return qs
+    def delete(self, request, aoi_id):
+        try:
+            obj = AOI.objects.get(id=aoi_id)
+        except AOI.DoesNotExist:
+            return Response({"detail": "AOI not found."},
+                            status=status.HTTP_404_NOT_FOUND)
 
-
-class IranForestViewSet(viewsets.ReadOnlyModelViewSet):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-    queryset = IranForest.objects.all().order_by("name")
-    serializer_class = IranForestSerializer
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-        qs = _apply_bbox_filter(qs, self.request)
-        qs = _apply_aoi_filter(qs, self.request)
-        return qs
+        obj.delete()
+        return Response({"detail": "deleted"})
 
 
-class FireRiskAreaViewSet(viewsets.ReadOnlyModelViewSet):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-    queryset = FireRiskArea.objects.all().order_by("name")
-    serializer_class = FireRiskAreaSerializer
+class SatelliteImagesAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
 
-    def get_queryset(self):
-        qs = super().get_queryset()
-        qs = _apply_bbox_filter(qs, self.request)
-        qs = _apply_aoi_filter(qs, self.request)
-        return qs
+    def get(self, request):
+        satellite_name = request.GET.get("satellite_name")
+        date_from = request.GET.get("date_from")
+        date_to = request.GET.get("date_to")
+        aoi_id = request.GET.get("aoi_id")
 
+        qs = SatelliteImage.objects.all()
 
-class IndexLayerViewSet(viewsets.ReadOnlyModelViewSet):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-    queryset = IndexLayer.objects.all().order_by("-date", "-id")
-    serializer_class = IndexLayerSerializer
-    filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields = ["index_name", "satellite_name"]
-    ordering_fields = ["date", "id"]
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-
-        d = self.request.query_params.get("date")
-        if d:
-            date_obj = parse_date(d)
-            if date_obj:
-                qs = qs.filter(date=date_obj)
-
-        qs = _apply_bbox_filter(qs, self.request)
-
-        # AOI فیلتر
-        if self.request.query_params.get("aoi_id"):
-            qs = qs.filter(geometry__isnull=False)
-            qs = _apply_aoi_filter(qs, self.request)
-
-        return qs
-
-
-class SatelliteImageViewSet(viewsets.ReadOnlyModelViewSet):
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-    queryset = SatelliteImage.objects.all().order_by("-date_time", "-id")
-    serializer_class = SatelliteImageSerializer
-    filter_backends = [DjangoFilterBackend, OrderingFilter]
-    filterset_fields = ["satellite_name"]
-    ordering_fields = ["date_time", "id"]
-
-    def get_queryset(self):
-        qs = super().get_queryset()
-
-        date_from = self.request.query_params.get("date_from")
-        date_to = self.request.query_params.get("date_to")
+        if satellite_name:
+            qs = qs.filter(satellite_name=satellite_name)
 
         if date_from:
-            df = parse_date(date_from)
-            if df:
-                qs = qs.filter(date_time__date__gte=df)
+            dt = parse_datetime(date_from) or parse_date(date_from)
+            qs = qs.filter(date_time__gte=dt)
 
         if date_to:
-            dt = parse_date(date_to)
-            if dt:
-                qs = qs.filter(date_time__date__lte=dt)
+            dt = parse_datetime(date_to) or parse_date(date_to)
+            qs = qs.filter(date_time__lte=dt)
 
-        qs = _apply_bbox_filter(qs, self.request)
+        if aoi_id:
+            try:
+                aoi = AOI.objects.get(id=aoi_id)
+                qs = qs.filter(geometry__intersects=aoi.geometry)
+            except AOI.DoesNotExist:
+                pass
 
-        if self.request.query_params.get("aoi_id"):
-            qs = qs.filter(geometry__isnull=False)
-            qs = _apply_aoi_filter(qs, self.request)
+        qs = qs.order_by("-date_time")
 
-        return qs
+        results = []
+        for obj in qs:
+            results.append({
+                "id": obj.id,
+                "satellite_name": obj.satellite_name,
+                "date_time": obj.date_time,
+                "image_name": obj.image_name,
+                "minio_link": obj.minio_link,
+            })
+
+        return Response({"results": results})
+
+
+class IndexLayersAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        index_name = request.GET.get("index_name")
+        satellite_name = request.GET.get("satellite_name")
+        date = request.GET.get("date")
+
+        qs = IndexLayer.objects.all()
+
+        if index_name:
+            qs = qs.filter(index_name=index_name)
+
+        if satellite_name:
+            qs = qs.filter(satellite_name=satellite_name)
+
+        if date:
+            dt = parse_date(date)
+            qs = qs.filter(date=dt)
+
+        qs = qs.order_by("-date")
+
+        results = []
+        for obj in qs:
+            results.append({
+                "id": obj.id,
+                "title": obj.title,
+                "index_name": obj.index_name,
+                "satellite_name": obj.satellite_name,
+                "date": obj.date,
+                "minio_link": obj.minio_link,
+            })
+
+        return Response({"results": results})

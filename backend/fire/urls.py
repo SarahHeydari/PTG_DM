@@ -1,27 +1,24 @@
 # fire/urls.py
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from django.urls import path
+
 from .views import (
-    FireCatalogAPIView, AOIViewSet,
-    IndexLayerViewSet, SatelliteImageViewSet,
-    IranProvinceViewSet, IranCountyViewSet, IranForestViewSet,
-    FireRiskAreaViewSet,
+    CountiesGeoJSONAPIView,
+    ForestsGeoJSONAPIView,
+    FireRiskGeoJSONAPIView,
+    AOIAPIView,
+    AOIDetailAPIView,
+    SatelliteImagesAPIView,
+    IndexLayersAPIView,
 )
 
-router = DefaultRouter()
-router.register(r"aoi", AOIViewSet, basename="aoi")
-
-router.register(r"index-layers", IndexLayerViewSet, basename="index-layers")
-router.register(r"indexes", IndexLayerViewSet, basename="indexes")
-
-router.register(r"satellite-images", SatelliteImageViewSet, basename="satellite-images")
-
-router.register(r"vectors/provinces", IranProvinceViewSet, basename="provinces")
-router.register(r"vectors/counties", IranCountyViewSet, basename="counties")
-router.register(r"vectors/forests", IranForestViewSet, basename="forests")
-router.register(r"vectors/fire-risk", FireRiskAreaViewSet, basename="fire-risk")
-
 urlpatterns = [
-    path("catalog/", FireCatalogAPIView.as_view(), name="fire-catalog"),
-    path("", include(router.urls)),
+    path("counties/", CountiesGeoJSONAPIView.as_view(), name="fire-counties"),
+    path("forests/", ForestsGeoJSONAPIView.as_view(), name="fire-forests"),
+    path("fire-risk/", FireRiskGeoJSONAPIView.as_view(), name="fire-risk"),
+
+    path("aoi/", AOIAPIView.as_view(), name="fire-aoi"),
+    path("aoi/<int:aoi_id>/", AOIDetailAPIView.as_view(), name="fire-aoi-detail"),
+
+    path("satellite-images/", SatelliteImagesAPIView.as_view(), name="fire-satellite-images"),
+    path("index-layers/", IndexLayersAPIView.as_view(), name="fire-index-layers"),
 ]

@@ -3,9 +3,9 @@ services:
     image: postgis/postgis:16-3.4
     restart: always
     environment:
-      POSTGRES_DB: crisis_db
-      POSTGRES_USER: crisis_user
-      POSTGRES_PASSWORD: crisis_pass
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgis_data:/var/lib/postgresql/data
     networks:
@@ -14,23 +14,23 @@ services:
   minio:
     image: minio/minio:latest
     container_name: minio
-    env_file:
-      - .env
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${MINIO_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
     volumes:
       - ./minio_data:/data
-    command: server /data --console-address ":9001"
     networks:
       - backend
 
   web:
     build: .
     container_name: web
-
     ports:
-      - "8000:8000"
+      - "${WEB_PORT}:8000"
     volumes:
       - .:/app
       - ./media:/app/media
@@ -41,6 +41,11 @@ services:
     depends_on:
       - db
       - minio
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/ >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
     networks:
       - backend
 
@@ -48,7 +53,7 @@ services:
     image: nginx:latest
     container_name: nginx
     ports:
-      - "80:80"
+      - "${NGINX_PORT}:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./staticfiles:/staticfiles
@@ -57,7 +62,19 @@ services:
       - web
     networks:
       - backend
+# geoserver:
+#     image: kartoza/geoserver:2.24.0
+#     container_name: geoserver
+    # env_file:
+    #   - .env
+#     ports:
+#       - "${GEOSERVER_PORT:-8084}:8080"
+#     volumes:
 
+#     networks:
+#       - search_net
+#     depends_on:
+#       - postgis
 volumes:
   postgis_data:
 
