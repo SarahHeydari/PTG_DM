@@ -1,5 +1,10 @@
-# fire/api_views.py
+# fire/views.py
 import json
+import io
+import os
+import re
+import uuid
+
 from django.db import connection
 from django.utils.dateparse import parse_datetime, parse_date
 from django.contrib.gis.geos import GEOSGeometry
@@ -8,8 +13,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework import status
+from rest_framework.parsers import MultiPartParser, FormParser
 
 from .models import AOI, SatelliteImage, IndexLayer
+from .utils.minio_manager import MinioManager
 
 
 def feature_collection_from_sql(sql, params=None):
@@ -29,6 +36,20 @@ def feature_collection_from_sql(sql, params=None):
         })
 
     return {"type": "FeatureCollection", "features": features}
+
+
+def _slug(s: str) -> str:
+    s = (s or "").strip().lower()
+    s = re.sub(r"[^a-z0-9-]+", "-", s)
+    s = re.sub(r"-{2,}", "-", s).strip("-")
+    return s or "unknown"
+
+
+def _safe_object_name(prefix: str, original_name: str) -> str:
+    # keep extension if present
+    _, ext = os.path.splitext(original_name or "")
+    ext = (ext or "").lower()
+    return f"{prefix}/{uuid.uuid4().hex}{ext}"
 
 
 class CountiesGeoJSONAPIView(APIView):
@@ -213,3 +234,187 @@ class IndexLayersAPIView(APIView):
             })
 
         return Response({"results": results})
+
+
+# ==========================================================
+# NEW: Upload APIs (MinIO + DB only) — appended, no change to existing APIs
+# ==========================================================
+
+class UploadSatelliteImageAPIView(APIView):
+    """
+    Upload a satellite raster (GeoTIFF) to MinIO and save metadata to DB.
+
+    multipart/form-data:
+      - file: required
+      - satellite_name: required
+      - date_time: required (ISO datetime)
+      - image_name: optional
+      - geometry: optional GeoJSON Polygon (stringified JSON or dict)
+    """
+    parser_classes = (MultiPartParser, FormParser)
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        f = request.FILES.get("file")
+        satellite_name = request.data.get("satellite_name")
+        date_time = request.data.get("date_time")
+        image_name = request.data.get("image_name") or (f.name if f else None)
+        geometry = request.data.get("geometry")
+
+        if not f:
+            return Response({"detail": "file is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not satellite_name:
+            return Response({"detail": "satellite_name is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not date_time:
+            return Response({"detail": "date_time is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        dt = parse_datetime(date_time)
+        if not dt:
+            return Response({"detail": "date_time is invalid. Use ISO datetime."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        geos = None
+        if geometry:
+            try:
+                if isinstance(geometry, str):
+                    geometry_obj = json.loads(geometry)
+                else:
+                    geometry_obj = geometry
+                geos = GEOSGeometry(json.dumps(geometry_obj), srid=4326)
+                if geos.geom_type != "Polygon":
+                    return Response({"detail": "Only Polygon geometry is allowed."},
+                                    status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                return Response({"detail": f"Invalid geometry: {str(e)}"},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+        mm = MinioManager()
+        object_name = _safe_object_name("satellite", f.name)
+
+        content = f.read()
+        minio_url = mm.upload_satellite(
+            satellite_name=satellite_name,
+            file_name=object_name,
+            content=content
+        )
+
+        bucket = f"sat-{_slug(satellite_name)}"
+
+        obj = SatelliteImage.objects.create(
+            satellite_name=satellite_name,
+            date_time=dt,
+            image_name=image_name,
+            minio_link=minio_url,
+            geometry=geos,
+            minio_bucket=bucket,
+            minio_object=object_name,
+            status="minio_ok",
+            is_published=False,
+        )
+
+        return Response({
+            "id": obj.id,
+            "satellite_name": obj.satellite_name,
+            "date_time": obj.date_time,
+            "image_name": obj.image_name,
+            "minio_link": obj.minio_link,
+            "minio_bucket": obj.minio_bucket,
+            "minio_object": obj.minio_object,
+            "status": obj.status,
+            "is_published": obj.is_published,
+        }, status=status.HTTP_201_CREATED)
+
+
+class UploadIndexLayerAPIView(APIView):
+    """
+    Upload an index raster (GeoTIFF) to MinIO and save metadata to DB.
+
+    multipart/form-data:
+      - file: required
+      - title: required
+      - index_name: required (NDVI, NBR, ...)
+      - date: required (YYYY-MM-DD)
+      - satellite_name: required
+      - geometry: optional GeoJSON Polygon (stringified JSON or dict)
+    """
+    parser_classes = (MultiPartParser, FormParser)
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        f = request.FILES.get("file")
+        title = request.data.get("title")
+        index_name = request.data.get("index_name")
+        date = request.data.get("date")
+        satellite_name = request.data.get("satellite_name")
+        geometry = request.data.get("geometry")
+
+        if not f:
+            return Response({"detail": "file is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not title:
+            return Response({"detail": "title is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not index_name:
+            return Response({"detail": "index_name is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not date:
+            return Response({"detail": "date is required (YYYY-MM-DD)."}, status=status.HTTP_400_BAD_REQUEST)
+        if not satellite_name:
+            return Response({"detail": "satellite_name is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        d = parse_date(date)
+        if not d:
+            return Response({"detail": "date is invalid. Use YYYY-MM-DD."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        geos = None
+        if geometry:
+            try:
+                if isinstance(geometry, str):
+                    geometry_obj = json.loads(geometry)
+                else:
+                    geometry_obj = geometry
+                geos = GEOSGeometry(json.dumps(geometry_obj), srid=4326)
+                if geos.geom_type != "Polygon":
+                    return Response({"detail": "Only Polygon geometry is allowed."},
+                                    status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                return Response({"detail": f"Invalid geometry: {str(e)}"},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+        mm = MinioManager()
+        object_name = _safe_object_name("index", f.name)
+
+        content = f.read()
+        minio_url = mm.upload_index(
+            index_name=index_name,
+            file_name=object_name,
+            content=content
+        )
+
+        bucket = f"idx-{_slug(index_name)}"
+
+        obj = IndexLayer.objects.create(
+            title=title,
+            minio_link=minio_url,
+            index_name=index_name,
+            date=d,
+            satellite_name=satellite_name,
+            geometry=geos,
+            minio_bucket=bucket,
+            minio_object=object_name,
+            status="minio_ok",
+            is_published=False,
+        )
+
+        return Response({
+            "id": obj.id,
+            "title": obj.title,
+            "index_name": obj.index_name,
+            "satellite_name": obj.satellite_name,
+            "date": obj.date,
+            "minio_link": obj.minio_link,
+            "minio_bucket": obj.minio_bucket,
+            "minio_object": obj.minio_object,
+            "status": obj.status,
+            "is_published": obj.is_published,
+        }, status=status.HTTP_201_CREATED)

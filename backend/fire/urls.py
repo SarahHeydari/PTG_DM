@@ -1,15 +1,7 @@
 # fire/urls.py
 from django.urls import path
 
-from .views import (
-    CountiesGeoJSONAPIView,
-    ForestsGeoJSONAPIView,
-    FireRiskGeoJSONAPIView,
-    AOIAPIView,
-    AOIDetailAPIView,
-    SatelliteImagesAPIView,
-    IndexLayersAPIView,
-)
+from .views import *
 
 urlpatterns = [
     path("counties/", CountiesGeoJSONAPIView.as_view(), name="fire-counties"),
@@ -21,4 +13,6 @@ urlpatterns = [
 
     path("satellite-images/", SatelliteImagesAPIView.as_view(), name="fire-satellite-images"),
     path("index-layers/", IndexLayersAPIView.as_view(), name="fire-index-layers"),
+    path("upload/satellite/", UploadSatelliteImageAPIView.as_view(), name="upload-satellite"),
+    path("upload/index/", UploadIndexLayerAPIView.as_view(), name="upload-index"),
 ]

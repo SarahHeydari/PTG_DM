@@ -48,7 +48,6 @@
   .app-shell{ height: calc(100vh - 64px); position: relative; background: var(--panel2); }
   #map{ height:100%; width:100%; }
 
-  /* left tools (smaller) */
   .left-tools{
     position:absolute; top: 16px; left: 16px; z-index: 1100;
     display:flex; flex-direction:column; gap:10px;
@@ -70,7 +69,6 @@
   }
   .tool-btn small{ font-weight:900; font-size:11px; }
 
-  /* sidebar */
   .sidebar{
     position:absolute; top: 12px; right: 12px; z-index: 1150;
     width: 392px; max-height: calc(100% - 24px);
@@ -82,8 +80,8 @@
     backdrop-filter: blur(10px);
     transform: translateX(0);
     transition: transform .18s ease;
+    pointer-events:auto;
   }
-  /* ✅ fully off-screen */
   .sidebar.collapsed{ transform: translateX(110%); }
 
   .sidebar-header{
@@ -95,7 +93,7 @@
   }
   .sidebar-header .h{ color:#e5e7eb; font-weight:900; font-size: 13px; }
   .sidebar-header .sub{ color: var(--muted); font-size: 11px; margin-top:2px; }
-  /* ✅ toggle stays visible even when sidebar is collapsed */
+
   .sidebar-toggle{
     position:absolute;
     left: -44px; top: 10px;
@@ -105,9 +103,10 @@
     border: 1px solid rgba(255,255,255,.10);
     color:#e5e7eb; font-weight:900; user-select:none;
     box-shadow: 0 10px 28px rgba(0,0,0,.25);
+    z-index:1300;
   }
-  .sidebar-body{ padding: 12px; overflow:auto; }
 
+  .sidebar-body{ padding: 12px; overflow:auto; }
   .section{
     background: rgba(255,255,255,.04);
     border: 1px solid rgba(255,255,255,.06);
@@ -130,8 +129,10 @@
   .help{ color: var(--muted); font-size: 11px; line-height: 1.6; margin-top: 6px; }
 
   .row2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+  .row3{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; }
   .field{ display:flex; flex-direction:column; gap:6px; }
   .field label{ color: rgba(229,231,235,.9); font-size: 12px; font-weight:700; }
+
   .field input[type="number"], .field select, .field input[type="date"]{
     height: 38px; border-radius: 12px;
     border: 1px solid rgba(255,255,255,.10);
@@ -149,31 +150,11 @@
     outline:none;
   }
 
-  /* Color picker like palette */
-  .color-row{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
-  .color-wrap{
-    display:flex; align-items:center; justify-content:space-between;
-    padding: 8px 10px; border-radius: 12px;
-    background: rgba(2,6,23,.35);
-    border: 1px solid rgba(255,255,255,.06);
-  }
-  .color-wrap span{ color:#e5e7eb; font-size:12px; font-weight:800; }
-
-  /* ✅ CHANGE #1: circular + smaller color inputs */
-  .color-wrap input[type="color"]{
-    width: 30px; height: 30px;
-    border-radius: 999px;
-    border: 1px solid rgba(255,255,255,.16);
-    background: transparent;
-    padding:0;
-    cursor:pointer;
-    overflow:hidden;
-  }
-  /* (webkit) remove default square chrome */
-  .color-wrap input[type="color"]::-webkit-color-swatch-wrapper{ padding:0; }
-  .color-wrap input[type="color"]::-webkit-color-swatch{
-    border: none;
-    border-radius: 999px;
+  /* تقویم تو تم تیره دیده بشه */
+  input[type="date"]::-webkit-calendar-picker-indicator{
+    filter: invert(1) brightness(1.15);
+    opacity: .95;
+    cursor: pointer;
   }
 
   .btnx{
@@ -191,7 +172,6 @@
   .btnx.primary:hover{ background: rgba(245,158,11,.24); }
   .btnx.secondary:hover{ background: rgba(255,255,255,.10); }
 
-  /* Check list (vector) */
   .check-list{ display:flex; flex-direction:column; gap:10px; }
   .check-item{
     display:flex; align-items:center; justify-content:space-between; gap:12px;
@@ -208,7 +188,6 @@
     cursor:pointer;
   }
 
-  /* list for satellite/index results */
   .list{ margin-top: 10px; display:flex; flex-direction:column; gap:8px; }
   .item{
     display:flex; align-items:center; justify-content:space-between; gap:10px;
@@ -220,6 +199,7 @@
   .item .name{ font-size:13px; color:#e5e7eb; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:800; }
   .item .sub{ font-size:11px; opacity:.75; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; direction:ltr; text-align:left; color:#cbd5e1; }
 
+  /* چشم تو تم سرمه‌ای دیده بشه */
   .icon-btn{
     width:34px; height:34px;
     display:grid; place-items:center;
@@ -227,33 +207,12 @@
     border:1px solid rgba(255,255,255,.10);
     background: rgba(255,255,255,.04);
     cursor:pointer;
+    color:#e5e7eb;
   }
   .icon-btn:hover{ background: rgba(255,255,255,.08); }
-  .icon-btn svg{ width:18px; height:18px; opacity:.9; }
-  .icon-btn.is-off svg{ opacity:.35; }
-
-  /* hazard marker (smaller + percent badge) */
-  .hazard-marker{ background: transparent; border:none; }
-  .haz{
-    position: relative;
-    width: 18px; height: 18px;
-  }
-  .haz .pct{
-    position:absolute;
-    left: 50%;
-    top: -10px;
-    transform: translateX(-50%);
-    padding: 2px 6px;
-    border-radius: 999px;
-    font-size: 10px;
-    font-weight: 900;
-    background: rgba(11,18,32,.92);
-    border: 1px solid rgba(245,158,11,.45);
-    color: #fbbf24;
-    display:none;
-    white-space:nowrap;
-  }
-  .haz.show .pct{ display:block; }
+  .icon-btn svg{ width:18px; height:18px; opacity:.95; }
+  .icon-btn.is-off{ color: rgba(229,231,235,.55); }
+  .icon-btn.is-off svg{ opacity:.55; }
 
   .leaflet-draw{ display:none !important; }
   .leaflet-control-attribution{
@@ -262,6 +221,88 @@
     border-radius: 10px !important;
     border: 1px solid rgba(255,255,255,.10) !important;
     padding: 4px 8px !important;
+  }
+
+  /* hazard marker */
+  .hazard-marker{ background: transparent; border:none; }
+  .haz{ position: relative; width: 18px; height: 18px; }
+  .haz .pct{
+    position:absolute; left:50%; top:-10px; transform: translateX(-50%);
+    padding: 2px 6px; border-radius: 999px; font-size: 10px; font-weight: 900;
+    background: rgba(11,18,32,.92);
+    border: 1px solid rgba(245,158,11,.45);
+    color: #fbbf24;
+    display:none; white-space:nowrap;
+  }
+  .haz.show .pct{ display:block; }
+
+  /* tiny toast */
+  .toast{
+    position:absolute; left: 16px; bottom: 16px; z-index: 2000;
+    background: rgba(15,23,42,.92);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 12px;
+    padding: 10px 12px;
+    color:#e5e7eb;
+    font-size: 12px;
+    box-shadow: 0 14px 40px rgba(0,0,0,.35);
+    max-width: 360px;
+    display:none;
+  }
+  .toast.show{ display:block; }
+  .toast b{ color:#fbbf24; }
+
+  /* ✅ Vector style controls (دایره‌ای و کوچیک) */
+  .style-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:10px;
+    align-items:end;
+  }
+  .swrow{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .swlabel{
+    color: rgba(229,231,235,.9);
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .swatch{
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    border: 2px solid rgba(255,255,255,.16);
+    box-shadow: 0 10px 24px rgba(0,0,0,.28);
+    cursor:pointer;
+    background:#fff;
+    flex: 0 0 auto;
+  }
+  .color-hidden{
+    position:absolute;
+    width:1px; height:1px;
+    opacity:0;
+    pointer-events:none;
+  }
+  .slider{
+    width:100%;
+    accent-color: var(--gold);
+    height: 20px;
+  }
+  .valpill{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width: 44px;
+    height: 30px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.10);
+    background: rgba(2,6,23,.35);
+    color:#e5e7eb;
+    font-weight:900;
+    font-size: 12px;
   }
 </style>
 {% endblock %}
@@ -280,6 +321,7 @@
 
 <div class="app-shell">
   <div id="map"></div>
+  <div class="toast" id="toast"></div>
 
   <div class="left-tools">
     <div class="tool-btn" id="zoomIn" title="بزرگنمایی">+</div>
@@ -298,7 +340,7 @@
       <div class="sidebar-toggle" id="sidebarToggle" title="جمع/باز">❯</div>
     </div>
 
-    <div class="sidebar-body">
+    <div class="sidebar-body" id="sidebarBody">
 
       <!-- BASEMAP -->
       <div class="section">
@@ -313,7 +355,7 @@
               <b>OSM</b>
               <small>OpenStreetMap</small>
             </div>
-            <input class="cb" type="radio" name="basemap" id="bm_osm" checked>
+            <input class="cb" type="radio" name="basemap" id="bm_osm">
           </label>
 
           <label class="check-item" style="cursor:pointer;">
@@ -321,18 +363,69 @@
               <b>Satellite (Esri)</b>
               <small>World Imagery</small>
             </div>
-            <input class="cb" type="radio" name="basemap" id="bm_sat">
+            <input class="cb" type="radio" name="basemap" id="bm_sat" checked>
           </label>
         </div>
 
         <div class="help">فقط یکی از BaseMapها فعال است (Radio).</div>
       </div>
 
+      <!-- ✅ STYLE SETTINGS (فقط وکتور + انتخاب لایه) -->
+      <div class="section" id="vectorStyleSection">
+        <div class="section-title">
+          <div class="t">تنظیمات استایل (وکتور)</div>
+          <div class="pill">Vector</div>
+        </div>
+
+        <div class="field" style="margin-bottom:10px;">
+          <label>انتخاب لایه</label>
+          <select id="vecTarget">
+            <option value="county">شهرستان‌ها</option>
+            <option value="forest">جنگل‌ها</option>
+          </select>
+          <div class="help">لایه‌ای که فعال باشد، استایل همان لایه تغییر می‌کند.</div>
+        </div>
+
+        <div class="style-grid" style="margin-bottom:12px;">
+          <div>
+            <div class="swrow">
+              <div class="swlabel">Fill</div>
+              <div class="swatch" id="fillSwatch" title="انتخاب رنگ Fill"></div>
+              <input class="color-hidden" type="color" id="fillColor" value="#60a5fa">
+            </div>
+          </div>
+          <div>
+            <div class="swrow">
+              <div class="swlabel">Stroke</div>
+              <div class="swatch" id="strokeSwatch" title="انتخاب رنگ Stroke"></div>
+              <input class="color-hidden" type="color" id="strokeColor" value="#60a5fa">
+            </div>
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:10px;">
+          <label>ضخامت (Weight) <span class="valpill" id="weightVal">2</span></label>
+          <input class="slider" type="range" id="strokeWeight" min="1" max="10" step="1" value="2">
+        </div>
+
+        <div class="field" style="margin-bottom:10px;">
+          <label>شفافیت Stroke (Opacity) <span class="valpill" id="strokeOpVal">0.95</span></label>
+          <input class="slider" type="range" id="strokeOpacity" min="0" max="1" step="0.05" value="0.95">
+        </div>
+
+        <div class="field" style="margin-bottom:4px;">
+          <label>شفافیت Fill (Fill Opacity) <span class="valpill" id="fillOpVal">0.10</span></label>
+          <input class="slider" type="range" id="fillOpacity" min="0" max="1" step="0.05" value="0.10">
+        </div>
+
+        <div class="help" id="vecStyleHint">—</div>
+      </div>
+
       <!-- AOI -->
       <div class="section" id="aoiSection">
         <div class="section-title">
           <div class="t">محدوده عملیات (AOI)</div>
-          <div class="pill">DRAW → API</div>
+          <div class="pill">DRAW / KML</div>
         </div>
 
         <div class="row2" style="margin-bottom:8px;">
@@ -351,7 +444,7 @@
         </div>
       </div>
 
-      <!-- VECTOR LAYERS (checkboxes) -->
+      <!-- VECTOR LAYERS -->
       <div class="section">
         <div class="section-title">
           <div class="t">لایه‌های برداری</div>
@@ -384,57 +477,14 @@
           </label>
         </div>
 
-        <div class="help">برای استایل‌دهی، اول یک لایه وکتوری را انتخاب کن.</div>
-      </div>
-
-      <!-- STYLE (palette + per-layer + live) -->
-      <div class="section" id="styleSection" style="display:none;">
-        <div class="section-title">
-          <div class="t">استایل لایه وکتوری</div>
-          <div class="pill">LIVE</div>
-        </div>
-
-        <div class="field" style="margin-bottom:10px;">
-          <label>لایه‌ی هدف</label>
-          <select id="styleTarget">
-            <option value="county">شهرستان‌ها</option>
-            <option value="forest">جنگل‌ها</option>
-          </select>
-          <div class="help">تغییرات فقط روی همین لایه اعمال می‌شود.</div>
-        </div>
-
-        <div class="color-row">
-          <div class="color-wrap">
-            <span>Fill</span>
-            <input type="color" id="fillColor" value="#60a5fa">
-          </div>
-          <div class="color-wrap">
-            <span>Stroke</span>
-            <input type="color" id="strokeColor" value="#3b82f6">
-          </div>
-        </div>
-
-        <div class="row2" style="margin-top:10px;">
-          <div class="field">
-            <label>Opacity (0 تا 1)</label>
-            <input type="number" id="fillOpacity" value="0.15" min="0" max="1" step="0.05">
-          </div>
-          <div class="field">
-            <label>ضخامت</label>
-            <input type="number" id="strokeWidth" value="2" min="1" max="10" step="1">
-          </div>
-        </div>
-
-        <div class="help" style="margin-top:10px;">
-          بدون دکمه؛ هر تغییر همین لحظه اعمال می‌شود.
-        </div>
+        <div class="help">AOI برای شرط intersect روی رسترها استفاده می‌شود.</div>
       </div>
 
       <!-- SATELLITE -->
       <div class="section">
         <div class="section-title">
           <div class="t">تصاویر ماهواره‌ای</div>
-          <div class="pill">List</div>
+          <div class="pill">WMS</div>
         </div>
 
         <div class="row2">
@@ -468,13 +518,15 @@
 
         <button id="btn-load-sat" class="btnx primary" style="margin-top:10px; width:100%;">نمایش لیست</button>
         <div id="sat-list" class="list"></div>
+
+        <div class="help">✅ حتی اگر intersect نداشت هم لایه نمایش داده می‌شود (فقط هشدار می‌دهد).</div>
       </div>
 
       <!-- INDEX -->
       <div class="section">
         <div class="section-title">
           <div class="t">شاخص‌ها</div>
-          <div class="pill">List</div>
+          <div class="pill">WMS</div>
         </div>
 
         <div class="row2">
@@ -497,13 +549,12 @@
           </div>
         </div>
 
-        <div class="field" style="margin-top:10px;">
-          <label>تاریخ</label>
-          <input id="index_date" type="date">
-        </div>
+        <!-- ✅ فیلتر تاریخ شاخص حذف شد -->
 
         <button id="btn-load-index" class="btnx primary" style="margin-top:10px; width:100%;">نمایش لیست</button>
         <div id="idx-list" class="list"></div>
+
+        <div class="help">✅ فیلتر شاخص‌ها «واقعاً» با <b>index_name</b> در فرانت انجام می‌شود.</div>
       </div>
 
     </div>
@@ -516,10 +567,8 @@
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 
 <script>
-  // ---------------------------
-  // API base + JWT
-  // ---------------------------
   const API_BASE = "/api/fire";
+
   function getToken(){
     try{ return localStorage.getItem("token"); }catch(e){ return null; }
   }
@@ -530,13 +579,25 @@
     return fetch(url, { ...opts, headers, cache: "no-store" });
   }
 
-  // ---------------------------
-  // Defaults for date (last 30 days)
-  // ---------------------------
-  function pad2(n){ return String(n).padStart(2,"0"); }
-  function toDateInput(d){
-    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  function toast(msg){
+    const el = document.getElementById("toast");
+    if(!el) return;
+    el.innerHTML = msg;
+    el.classList.add("show");
+    clearTimeout(window.__toastTimer);
+    window.__toastTimer = setTimeout(()=> el.classList.remove("show"), 2800);
   }
+
+  // ✅ حفظ اسکرول سایدبار هنگام کلیک روی آیتم‌ها
+  const sidebarBody = document.getElementById("sidebarBody");
+  function saveScroll(){ return sidebarBody ? sidebarBody.scrollTop : 0; }
+  function restoreScroll(y){
+    requestAnimationFrame(()=>{ if(sidebarBody) sidebarBody.scrollTop = y; });
+  }
+
+  // Dates default (last 30 days)
+  function pad2(n){ return String(n).padStart(2,"0"); }
+  function toDateInput(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
   (function initDates(){
     const to = new Date();
     const from = new Date();
@@ -547,33 +608,34 @@
     if(dt) dt.value = toDateInput(to);
   })();
 
-  // ---------------------------
-  // Leaflet map
-  // ---------------------------
+  // Map
   const map = L.map("map", { zoomControl: false }).setView([32.0, 53.0], 5);
 
   const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19, attribution: "&copy; OpenStreetMap"
   });
-
   const esriSat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
     maxZoom: 19, attribution: "&copy; Esri"
   });
-
   esriSat.addTo(map);
+
   L.control.scale({ position: "bottomleft" }).addTo(map);
 
   document.getElementById("zoomIn").onclick = () => map.zoomIn();
   document.getElementById("zoomOut").onclick = () => map.zoomOut();
   document.getElementById("home").onclick = () => map.setView([32.0, 53.0], 5);
 
-  // Sidebar toggle (fully hide)
+  // Dashboard toggle (✅ باز و بسته میشه)
   const sidebar = document.getElementById("sidebar");
   const sidebarToggle = document.getElementById("sidebarToggle");
-  sidebarToggle.addEventListener("click", () => {
-    sidebar.classList.toggle("collapsed");
-    sidebarToggle.textContent = sidebar.classList.contains("collapsed") ? "❮" : "❯";
-  });
+  if(sidebar && sidebarToggle){
+    sidebarToggle.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      sidebar.classList.toggle("collapsed");
+      sidebarToggle.textContent = sidebar.classList.contains("collapsed") ? "❮" : "❯";
+    });
+  }
 
   // Basemap radios
   const bmOSM = document.getElementById("bm_osm");
@@ -590,12 +652,137 @@
   bmOSM.addEventListener("change", () => bmOSM.checked && setBasemap("osm"));
   bmSAT.addEventListener("change", () => bmSAT.checked && setBasemap("sat"));
 
-  // ---------------------------
-  // AOI draw + API (BBox overlay removed)
-  // ---------------------------
+  // -----------------------------
+  // ✅ Vector style per layer (county/forest)
+  // -----------------------------
+  const vecStyles = {
+    county: { stroke:"#60a5fa", fill:"#60a5fa", weight:2, opacity:0.95, fillOpacity:0.10 },
+    forest: { stroke:"#60a5fa", fill:"#60a5fa", weight:2, opacity:0.95, fillOpacity:0.10 }
+  };
+
+  function clamp01(v){
+    const n = parseFloat(v);
+    if(!Number.isFinite(n)) return 0;
+    return Math.max(0, Math.min(1, n));
+  }
+  function clampInt(v, min, max){
+    const n = parseInt(v, 10);
+    if(!Number.isFinite(n)) return min;
+    return Math.max(min, Math.min(max, n));
+  }
+  function setText(id, t){
+    const el = document.getElementById(id);
+    if(el) el.textContent = t;
+  }
+
+  const vecTarget = document.getElementById("vecTarget");
+  const fillColor = document.getElementById("fillColor");
+  const strokeColor = document.getElementById("strokeColor");
+  const fillSwatch = document.getElementById("fillSwatch");
+  const strokeSwatch = document.getElementById("strokeSwatch");
+  const strokeWeight = document.getElementById("strokeWeight");
+  const strokeOpacity = document.getElementById("strokeOpacity");
+  const fillOpacity = document.getElementById("fillOpacity");
+  const vecStyleHint = document.getElementById("vecStyleHint");
+
+  function activeVecKey(){ return vecTarget?.value || "county"; }
+
+  function paintSwatches(key){
+    const s = vecStyles[key];
+    if(fillSwatch) fillSwatch.style.background = s.fill;
+    if(strokeSwatch) strokeSwatch.style.background = s.stroke;
+    if(fillColor) fillColor.value = s.fill;
+    if(strokeColor) strokeColor.value = s.stroke;
+
+    if(strokeWeight) strokeWeight.value = String(s.weight);
+    if(strokeOpacity) strokeOpacity.value = String(s.opacity);
+    if(fillOpacity) fillOpacity.value = String(s.fillOpacity);
+
+    setText("weightVal", s.weight);
+    setText("strokeOpVal", Number(s.opacity).toFixed(2));
+    setText("fillOpVal", Number(s.fillOpacity).toFixed(2));
+
+    const on = vectorState[key]?.on ? "فعال" : "غیرفعال";
+    if(vecStyleHint) vecStyleHint.innerHTML = `لایه انتخابی: <b>${key}</b> (${on})`;
+  }
+
+  function applyVecStyle(key){
+    const s = vecStyles[key];
+    const layer = vectorState[key]?.layer;
+    if(layer && layer.setStyle){
+      layer.setStyle({
+        color: s.stroke,
+        weight: s.weight,
+        opacity: s.opacity,
+        fillColor: s.fill,
+        fillOpacity: s.fillOpacity
+      });
+    }
+  }
+
+  function readVecInputsToStyle(key){
+    const s = vecStyles[key];
+    s.fill = fillColor?.value || s.fill;
+    s.stroke = strokeColor?.value || s.stroke;
+    s.weight = clampInt(strokeWeight?.value, 1, 10);
+    s.opacity = clamp01(strokeOpacity?.value);
+    s.fillOpacity = clamp01(fillOpacity?.value);
+
+    setText("weightVal", s.weight);
+    setText("strokeOpVal", Number(s.opacity).toFixed(2));
+    setText("fillOpVal", Number(s.fillOpacity).toFixed(2));
+
+    if(fillSwatch) fillSwatch.style.background = s.fill;
+    if(strokeSwatch) strokeSwatch.style.background = s.stroke;
+  }
+
+  // swatch click -> open picker
+  if(fillSwatch && fillColor){
+    fillSwatch.addEventListener("click", ()=> fillColor.click());
+  }
+  if(strokeSwatch && strokeColor){
+    strokeSwatch.addEventListener("click", ()=> strokeColor.click());
+  }
+
+  // change target
+  vecTarget?.addEventListener("change", ()=>{
+    paintSwatches(activeVecKey());
+  });
+
+  // input changes apply only to selected vector
+  ["change","input"].forEach(evt=>{
+    fillColor?.addEventListener(evt, ()=>{
+      const k = activeVecKey();
+      readVecInputsToStyle(k);
+      applyVecStyle(k);
+    });
+    strokeColor?.addEventListener(evt, ()=>{
+      const k = activeVecKey();
+      readVecInputsToStyle(k);
+      applyVecStyle(k);
+    });
+    strokeWeight?.addEventListener(evt, ()=>{
+      const k = activeVecKey();
+      readVecInputsToStyle(k);
+      applyVecStyle(k);
+    });
+    strokeOpacity?.addEventListener(evt, ()=>{
+      const k = activeVecKey();
+      readVecInputsToStyle(k);
+      applyVecStyle(k);
+    });
+    fillOpacity?.addEventListener(evt, ()=>{
+      const k = activeVecKey();
+      readVecInputsToStyle(k);
+      applyVecStyle(k);
+    });
+  });
+
+  // --------------------------------
+  // AOI draw / KML (source of truth)
+  // --------------------------------
   const drawnItems = new L.FeatureGroup();
   map.addLayer(drawnItems);
-
   let aoiGeoJSON = null;
 
   function setAoiStatus(txt){
@@ -611,10 +798,8 @@
 
   map.on(L.Draw.Event.CREATED, function (e) {
     drawnItems.clearLayers();
-
     const layer = e.layer;
     drawnItems.addLayer(layer);
-
     aoiGeoJSON = layer.toGeoJSON();
     setAoiStatus("رسم شده");
   });
@@ -626,13 +811,12 @@
     aoiGeoJSON = null;
     setAoiStatus("نداریم");
   }
-
   document.getElementById("clearAOI").addEventListener("click", clearAOI);
   document.getElementById("removeAoiBtn").addEventListener("click", clearAOI);
 
   document.getElementById("saveAoiBtn").addEventListener("click", async ()=>{
     if(!aoiGeoJSON){
-      alert("اول AOI را رسم یا از KML وارد کن.");
+      toast("اول AOI را رسم یا از KML وارد کن.");
       return;
     }
     try{
@@ -646,41 +830,12 @@
         throw new Error(t);
       }
       setAoiStatus("ثبت شد");
-      alert("AOI ثبت شد.");
+      toast("AOI ثبت شد.");
     }catch(e){
       console.error(e);
-      alert("خطا در ثبت AOI.");
+      toast("خطا در ثبت AOI.");
     }
   });
-
-  // Load last AOI (if exists) and show by default
-  async function loadLastAOI(){
-    try{
-      const res = await apiFetch(`${API_BASE}/aoi/`);
-      if(!res.ok) return;
-      const data = await res.json();
-      const list = data.results || [];
-      if(!list.length) return;
-
-      const last = list[0];
-      if(!last.geometry) return;
-
-      const layer = L.geoJSON({ type:"Feature", properties:{}, geometry:last.geometry }, {
-        style:{ color:"#f59e0b", weight:2, fillColor:"#f59e0b", fillOpacity:0.12 }
-      });
-
-      drawnItems.clearLayers();
-      layer.eachLayer(l=> drawnItems.addLayer(l));
-      aoiGeoJSON = { type:"Feature", geometry:last.geometry, properties:{} };
-
-      setAoiStatus("بارگذاری شد");
-      try{
-        const b = drawnItems.getBounds();
-        if(b && b.isValid()) map.fitBounds(b, { padding:[20,20] });
-      }catch(e){}
-    }catch(e){}
-  }
-  loadLastAOI();
 
   // KML upload -> extract a simple polygon
   function parseKmlPolygonCoords(kmlText){
@@ -698,10 +853,8 @@
     }).filter(Boolean);
 
     if(coords.length < 4) return null;
-    // ensure closed
     const first = coords[0], last = coords[coords.length-1];
     if(first[0] !== last[0] || first[1] !== last[1]) coords.push(first);
-
     return coords;
   }
 
@@ -713,7 +866,7 @@
       const text = await file.text();
       const ring = parseKmlPolygonCoords(text);
       if(!ring){
-        alert("Polygon معتبر از KML پیدا نشد (فعلاً فقط Polygon ساده پشتیبانی می‌شود).");
+        toast("Polygon معتبر از KML پیدا نشد (فعلاً فقط Polygon ساده).");
         return;
       }
 
@@ -721,11 +874,9 @@
       aoiGeoJSON = { type:"Feature", properties:{}, geometry: geom };
 
       drawnItems.clearLayers();
-
       const layer = L.geoJSON(aoiGeoJSON, {
         style:{ color:"#f59e0b", weight:2, fillColor:"#f59e0b", fillOpacity:0.12 }
       }).addTo(map);
-
       layer.eachLayer(l=> drawnItems.addLayer(l));
 
       setAoiStatus("از KML");
@@ -733,84 +884,210 @@
         const b = layer.getBounds();
         if(b && b.isValid()) map.fitBounds(b, { padding:[20,20] });
       }catch(e){}
-      alert("KML اعمال شد. حالا می‌تونی «ثبت AOI» بزنی.");
+      toast("KML اعمال شد. حالا می‌تونی «ثبت AOI» بزنی.");
     }catch(err){
       console.error(err);
-      alert("خطا در خواندن KML.");
+      toast("خطا در خواندن KML.");
     }
   });
 
-  // ---------------------------
-  // Vector layers + LIVE style per selected layer
-  // ---------------------------
-  const vectorState = {
-    county: { on:false, layer:null, style:null },
-    forest: { on:false, layer:null, style:null },
-  };
-
-  function refreshStyleVisibility(){
-    const anyOn = vectorState.county.on || vectorState.forest.on;
-    const box = document.getElementById("styleSection");
-    if(box) box.style.display = anyOn ? "block" : "none";
+  function aoiBounds4326(){
+    if(!aoiGeoJSON) return null;
+    try{
+      const b = drawnItems.getBounds();
+      if(!b || !b.isValid()) return null;
+      return {
+        minx: b.getWest(),
+        miny: b.getSouth(),
+        maxx: b.getEast(),
+        maxy: b.getNorth()
+      };
+    }catch(e){ return null; }
   }
 
-  function clamp(n, min, max){
-    n = Number(n);
-    if(Number.isNaN(n)) n = min;
-    return Math.max(min, Math.min(max, n));
+  function bboxIntersects(a, b){
+    if(!a || !b) return true;
+    return !(b.minx > a.maxx || b.maxx < a.minx || b.miny > a.maxy || b.maxy < a.miny);
   }
 
-  function getStyleFromUI(){
-    const stroke = document.getElementById("strokeColor")?.value || "#3b82f6";
-    const fill = document.getElementById("fillColor")?.value || "#60a5fa";
-    const weight = clamp(document.getElementById("strokeWidth")?.value ?? 2, 1, 10);
-    const fillOpacity = clamp(document.getElementById("fillOpacity")?.value ?? 0.15, 0, 1);
-    return { color: stroke, weight, fillColor: fill, fillOpacity, opacity: 0.95 };
-  }
+  // --- WMS capabilities bbox cache
+  const wmsCapsCache = new Map(); // key: wms_url => Map(layerName => bbox4326)
+  async function getLayerBBoxFromWMS(wmsUrl, layerName){
+    try{
+      if(wmsCapsCache.has(wmsUrl) && wmsCapsCache.get(wmsUrl).has(layerName)){
+        return wmsCapsCache.get(wmsUrl).get(layerName);
+      }
+      const capsUrl = `${wmsUrl}?service=WMS&request=GetCapabilities`;
+      const res = await fetch(capsUrl, { cache: "no-store" });
+      const txt = await res.text();
+      const xml = new DOMParser().parseFromString(txt, "application/xml");
 
-  function getSelectedStyleTarget(){
-    const sel = document.getElementById("styleTarget");
-    return sel ? sel.value : "county";
-  }
-  function setSelectedStyleTarget(key){
-    const sel = document.getElementById("styleTarget");
-    if(sel && key) sel.value = key;
-  }
+      const mapForWms = new Map();
+      const layers = Array.from(xml.querySelectorAll("Layer Layer"));
+      layers.forEach(LY=>{
+        const nm = LY.querySelector("Name")?.textContent?.trim();
+        if(!nm) return;
 
-  function applyStyleToLayer(key){
-    if(!vectorState[key]) return;
-    const style = getStyleFromUI();
-    vectorState[key].style = style;
-    if(vectorState[key].layer){
-      try{ vectorState[key].layer.setStyle(style); }catch(e){}
-    }
-  }
+        const ex = LY.querySelector("EX_GeographicBoundingBox");
+        if(ex){
+          const west = parseFloat(ex.querySelector("westBoundLongitude")?.textContent);
+          const east = parseFloat(ex.querySelector("eastBoundLongitude")?.textContent);
+          const south = parseFloat(ex.querySelector("southBoundLatitude")?.textContent);
+          const north = parseFloat(ex.querySelector("northBoundLatitude")?.textContent);
+          if([west,east,south,north].every(Number.isFinite)){
+            mapForWms.set(nm, { minx: west, miny: south, maxx: east, maxy: north });
+            return;
+          }
+        }
 
-  function wireLiveStyle(){
-    const ids = ["strokeColor","fillColor","strokeWidth","fillOpacity"];
-    ids.forEach(id=>{
-      const el = document.getElementById(id);
-      if(!el) return;
-      el.addEventListener("input", ()=> applyStyleToLayer(getSelectedStyleTarget()));
-      el.addEventListener("change", ()=> applyStyleToLayer(getSelectedStyleTarget()));
-    });
-
-    const sel = document.getElementById("styleTarget");
-    if(sel){
-      sel.addEventListener("change", ()=>{
-        const k = getSelectedStyleTarget();
-        const st = vectorState[k]?.style;
-        if(st){
-          document.getElementById("strokeColor").value = st.color || "#3b82f6";
-          document.getElementById("fillColor").value = st.fillColor || "#60a5fa";
-          document.getElementById("strokeWidth").value = st.weight ?? 2;
-          document.getElementById("fillOpacity").value = st.fillOpacity ?? 0.15;
+        const ll = LY.querySelector("LatLonBoundingBox");
+        if(ll){
+          const minx = parseFloat(ll.getAttribute("minx"));
+          const miny = parseFloat(ll.getAttribute("miny"));
+          const maxx = parseFloat(ll.getAttribute("maxx"));
+          const maxy = parseFloat(ll.getAttribute("maxy"));
+          if([minx,miny,maxx,maxy].every(Number.isFinite)){
+            mapForWms.set(nm, { minx, miny, maxx, maxy });
+            return;
+          }
         }
       });
+
+      wmsCapsCache.set(wmsUrl, mapForWms);
+      return mapForWms.get(layerName) || null;
+    }catch(e){
+      console.warn("GetCapabilities parse failed:", e);
+      return null;
     }
   }
-  wireLiveStyle();
 
+  // -----------------------------
+  // ✅ Raster overlays state
+  // -----------------------------
+  const rasterOverlays = new Map(); // key => Leaflet layer
+
+  // ✅ دلیل اصلی Sentinel (و کلاً WMS) که در پروژه‌های Docker نمایش نمی‌دهد:
+  // API معمولاً wms_url را با hostname داخلی کانتینر می‌دهد (مثل http://geoserver:8080/...) که در مرورگر resolve نمی‌شود.
+  // اینجا URL را برای مرورگر بازنویسی می‌کنیم (localhost:8080).
+  function browserizeWmsUrl(u){
+    if(!u) return "";
+    try{
+      const url = new URL(u, window.location.origin);
+
+      const internalHosts = new Set(["geoserver", "postgis", "web", "django"]);
+      if(internalHosts.has(url.hostname)){
+        url.hostname = window.location.hostname; // معمولاً localhost
+        url.port = "8080"; // پورت رایج GeoServer
+      }
+
+      // اگر پورت نداشت ولی hostname داخلی بود، همینجا ست می‌شود
+      // مسیر را دست نمی‌زنیم
+      return (url.origin + url.pathname).replace(/\/+$/,"");
+    }catch(e){
+      // اگر URL نسبی باشد
+      const base = window.location.origin.replace(/\/+$/,"");
+      const p = String(u).trim();
+      if(p.startsWith("/")) return base + p.replace(/\/+$/,"");
+      return p.replace(/\/+$/,"");
+    }
+  }
+
+  function normalizeWmsUrl(item){
+    let u = item?.wms_url || item?.wms || item?.geoserver_wms_url || item?.geoserver_url || "";
+    if(!u) return "";
+
+    u = browserizeWmsUrl(u);
+
+    // اگر URL ریشه geoserver بود، /wms اضافه کن
+    const low = u.toLowerCase();
+    if(!low.includes("/wms")){
+      if(u.endsWith("/")) u = u.slice(0,-1);
+      u = u + "/wms";
+    }
+    return u.split("?")[0];
+  }
+
+  function normalizeLayerName(item){
+    return item?.geoserver_layer || item?.layer_name || item?.layer || "";
+  }
+
+  function overlayKey(item){
+    const w = normalizeWmsUrl(item);
+    const l = normalizeLayerName(item);
+    return `${w}::${l}`;
+  }
+
+  function addWmsOverlay(item){
+    const wmsUrl = normalizeWmsUrl(item);
+    const layerName = normalizeLayerName(item);
+    const key = overlayKey(item);
+
+    if(!wmsUrl || !layerName){
+      toast("این آیتم WMS/Layer معتبر ندارد.");
+      return false;
+    }
+    if(rasterOverlays.has(key)) return true;
+
+    const wms = L.tileLayer.wms(wmsUrl, {
+      layers: layerName,
+      format: "image/png",
+      transparent: true,
+      version: "1.1.0",
+      attribution: "GeoServer WMS",
+      tileSize: 256,
+      opacity: 0.70,
+      zIndex: 650
+    });
+
+    // اگر WMS مشکل داشت، حداقل بفهمیم
+    wms.on("tileerror", (e)=>{
+      console.warn("WMS tile error:", { wmsUrl, layerName, e });
+    });
+
+    rasterOverlays.set(key, wms);
+    wms.addTo(map);
+    return true;
+  }
+
+  function removeWmsOverlay(item){
+    const key = overlayKey(item);
+    const lyr = rasterOverlays.get(key);
+    if(lyr){
+      try{ map.removeLayer(lyr); }catch(e){}
+      rasterOverlays.delete(key);
+    }
+  }
+
+  // ✅ اگر intersect نداشت هم نشان بده (فقط هشدار)
+  async function toggleOverlayWithAOI(item, turnOn){
+    if(!turnOn){
+      removeWmsOverlay(item);
+      return true;
+    }
+
+    const wmsUrl = normalizeWmsUrl(item);
+    const layerName = normalizeLayerName(item);
+    if(!wmsUrl || !layerName){
+      toast("این آیتم لایه‌ی GeoServer/WMS ندارد.");
+      return false;
+    }
+
+    const aoiB = aoiBounds4326();
+    if(aoiB){
+      const bbox = await getLayerBBoxFromWMS(wmsUrl, layerName);
+      if(bbox){
+        const okInt = bboxIntersects(aoiB, bbox);
+        if(!okInt){
+          toast("⚠️ AOI با این لایه intersect ندارد، ولی نمایش داده شد.");
+        }
+      }
+    }
+    return addWmsOverlay(item);
+  }
+
+  // -----------------------------
+  // Vector layers
+  // -----------------------------
   async function fetchGeoJSON(url){
     const res = await apiFetch(url);
     if(!res.ok){
@@ -819,89 +1096,81 @@
     }
     return res.json();
   }
-
   function normalizeFeatureCollection(raw){
     if(raw && raw.type === "FeatureCollection" && Array.isArray(raw.features)) return raw;
     return { type:"FeatureCollection", features:[] };
   }
 
-  function addVectorLayer(key, fc){
+  const vectorState = { county: {on:false, layer:null}, forest:{on:false, layer:null} };
+
+  function styleForKey(key){
+    const s = vecStyles[key];
+    return {
+      color: s.stroke,
+      weight: s.weight,
+      opacity: s.opacity,
+      fillColor: s.fill,
+      fillOpacity: s.fillOpacity
+    };
+  }
+
+  function addVector(key, fc){
     if(vectorState[key].layer) map.removeLayer(vectorState[key].layer);
-
-    const style = vectorState[key].style || getStyleFromUI();
-    vectorState[key].style = style;
-
     const layer = L.geoJSON(normalizeFeatureCollection(fc), {
-      style: ()=> style,
+      style: styleForKey(key),
       onEachFeature: (feature, lyr)=>{
         const nm = feature?.properties?.name || feature?.properties?.NAME || "بدون نام";
         lyr.bindPopup(nm);
       }
     });
-
     vectorState[key].layer = layer;
     vectorState[key].on = true;
     layer.addTo(map);
-    refreshStyleVisibility();
-
-    try{
-      const b = layer.getBounds();
-      if(b && b.isValid()) map.fitBounds(b, { padding:[20,20] });
-    }catch(e){}
   }
-
-  function removeVectorLayer(key){
+  function removeVector(key){
     if(vectorState[key].layer) map.removeLayer(vectorState[key].layer);
     vectorState[key].layer = null;
     vectorState[key].on = false;
-    refreshStyleVisibility();
   }
 
-  const cbCounty = document.getElementById("cb_county");
-  const cbForest = document.getElementById("cb_forest");
-
-  cbCounty.addEventListener("change", async ()=>{
-    if(cbCounty.checked){
-      setSelectedStyleTarget("county");
+  document.getElementById("cb_county").addEventListener("change", async (e)=>{
+    if(e.target.checked){
       try{
-        const fc = await fetchGeoJSON(`${API_BASE}/counties/`);
-        addVectorLayer("county", fc);
-      }catch(e){
-        console.error(e);
-        alert("خطا در دریافت شهرستان‌ها.");
-        cbCounty.checked = false;
-        removeVectorLayer("county");
+        addVector("county", await fetchGeoJSON(`${API_BASE}/counties/`));
+        applyVecStyle("county");
+        paintSwatches(activeVecKey());
+      }catch(err){
+        console.error(err);
+        toast("خطا در دریافت شهرستان‌ها.");
+        e.target.checked=false; removeVector("county");
       }
-    }else{
-      removeVectorLayer("county");
+    } else {
+      removeVector("county");
+      paintSwatches(activeVecKey());
     }
   });
 
-  cbForest.addEventListener("change", async ()=>{
-    if(cbForest.checked){
-      setSelectedStyleTarget("forest");
+  document.getElementById("cb_forest").addEventListener("change", async (e)=>{
+    if(e.target.checked){
       try{
-        const fc = await fetchGeoJSON(`${API_BASE}/forests/`);
-        addVectorLayer("forest", fc);
-      }catch(e){
-        console.error(e);
-        alert("خطا در دریافت جنگل‌ها.");
-        cbForest.checked = false;
-        removeVectorLayer("forest");
+        addVector("forest", await fetchGeoJSON(`${API_BASE}/forests/`));
+        applyVecStyle("forest");
+        paintSwatches(activeVecKey());
+      }catch(err){
+        console.error(err);
+        toast("خطا در دریافت جنگل‌ها.");
+        e.target.checked=false; removeVector("forest");
       }
-    }else{
-      removeVectorLayer("forest");
+    } else {
+      removeVector("forest");
+      paintSwatches(activeVecKey());
     }
   });
 
-  // ---------------------------
+  // -----------------------------
   // Fire risk points
-  // ---------------------------
-  const riskState = {
-    on: true,
-    layer: null,
-    percentById: new Map()
-  };
+  // -----------------------------
+  const riskState = { on:true, layer:null, percentById:new Map() };
 
   function hazardIcon(percent, showPct){
     const svg = `
@@ -913,14 +1182,8 @@
           <circle cx="32" cy="48" r="4" fill="#0b1220"/>
         </svg>
       </div>`;
-    return L.divIcon({
-      className: "hazard-marker",
-      html: svg,
-      iconSize: [18, 18],
-      iconAnchor: [9, 9]
-    });
+    return L.divIcon({ className:"hazard-marker", html:svg, iconSize:[18,18], iconAnchor:[9,9] });
   }
-
   function getRiskPercent(feature){
     const id = feature?.properties?.id ?? feature?.properties?.ID ?? null;
     if(id !== null && riskState.percentById.has(id)) return riskState.percentById.get(id);
@@ -928,10 +1191,7 @@
     if(id !== null) riskState.percentById.set(id, rnd);
     return rnd;
   }
-
-  function shouldShowPercent(){
-    return map.getZoom() >= 7;
-  }
+  function shouldShowPercent(){ return map.getZoom() >= 7; }
 
   async function loadRisk(){
     try{
@@ -952,19 +1212,14 @@
 
       riskState.layer = layer;
       if(riskState.on) layer.addTo(map);
-    }catch(e){
-      console.error(e);
-    }
+    }catch(e){ console.error(e); }
   }
-
-  const cbRisk = document.getElementById("cb_risk");
-  cbRisk.addEventListener("change", ()=>{
-    riskState.on = cbRisk.checked;
+  document.getElementById("cb_risk").addEventListener("change", (e)=>{
+    riskState.on = e.target.checked;
     if(!riskState.layer) return;
     if(riskState.on) riskState.layer.addTo(map);
     else map.removeLayer(riskState.layer);
   });
-
   map.on("zoomend", ()=>{
     if(!riskState.layer) return;
     const show = shouldShowPercent();
@@ -975,14 +1230,45 @@
       m.setIcon(hazardIcon(pct, show));
     });
   });
-
   loadRisk();
 
-  // ---------------------------
-  // Satellite list (metadata)
-  // ---------------------------
-  const satState = new Map();
-  function isValidUrl(u){ return typeof u === "string" && u.startsWith("http"); }
+  // -----------------------------
+  // Filtering helpers
+  // -----------------------------
+  function normKey(v){
+    return String(v ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/[\s\-_]/g, "");
+  }
+
+  function isPublishedItem(x){
+    const v = x?.is_published ?? x?.published ?? x?.isPublic ?? x?.public ?? null;
+    if(v === null || v === undefined) return true;
+    return v === true || v === 1 || v === "1" || v === "true";
+  }
+
+  function matchesSatellite(item, selected){
+    if(!selected) return true;
+    const a = normKey(item?.satellite_name);
+    const b = normKey(selected);
+    return a === b;
+  }
+
+  function matchesIndexName(item, selected){
+    if(!selected) return true;
+    const a = normKey(item?.index_name);
+    const b = normKey(selected);
+    return a === b;
+  }
+
+  function isValidUrl(u){ return typeof u === "string" && (u.startsWith("http://") || u.startsWith("https://")); }
+
+  // -----------------------------
+  // UI list items
+  // -----------------------------
+  const satOn = new Map(); // id -> bool
+  const idxOn = new Map(); // id -> bool
 
   function eyeBtn(isOn=true){
     const cls = isOn ? "" : "is-off";
@@ -998,137 +1284,181 @@
 
   function getAoiMetaText(){
     if(document.getElementById("showAoiMeta")?.value !== "1") return "";
-    if(!aoiGeoJSON) return " | AOI: ندارد";
-    try{
-      const b = drawnItems.getBounds();
-      if(b && b.isValid()){
-        const sw = b.getSouthWest(), ne = b.getNorthEast();
-        return ` | AOI: [${sw.lat.toFixed(2)},${sw.lng.toFixed(2)}]-[${ne.lat.toFixed(2)},${ne.lng.toFixed(2)}]`;
-      }
-    }catch(e){}
-    return " | AOI: دارد";
+    const b = aoiBounds4326();
+    if(!b) return " | AOI: ندارد";
+    return ` | AOI: [${b.miny.toFixed(2)},${b.minx.toFixed(2)}]-[${b.maxy.toFixed(2)},${b.maxx.toFixed(2)}]`;
   }
 
   function renderSatItem(item){
-    const on = satState.get(item.id) ?? false;
+    if(!isPublishedItem(item)) return "";
+    const on = satOn.get(item.id) ?? false;
     const name = item.image_name || "Unnamed";
     const aoiMeta = getAoiMetaText();
     const sub = `${item.satellite_name || ""} | ${item.date_time || ""}${aoiMeta}`;
     const linkOk = isValidUrl(item.minio_link);
 
+    const layerName = normalizeLayerName(item);
+    const wmsUrl = normalizeWmsUrl(item);
+    const status = (layerName && wmsUrl) ? "" : `<div class="sub" style="color:#fbbf24;">layer/wms: -</div>`;
+
     return `
       <div class="item" data-id="${item.id}">
         <div class="meta">
           <div class="name">${name}</div>
           <div class="sub">${sub}</div>
-          <div class="sub">${linkOk ? item.minio_link : "لینک نامعتبر"}</div>
+          <div class="sub">${linkOk ? item.minio_link : "about:blank"}</div>
+          ${status}
         </div>
         ${eyeBtn(on)}
       </div>
     `;
   }
 
-  function attachSatHandlers(container){
+  function renderIdxItem(item){
+    if(!isPublishedItem(item)) return "";
+    const on = idxOn.get(item.id) ?? false;
+    const name = item.title || item.name || "Unnamed";
+    const sub = `${item.index_name || ""} | ${item.satellite_name || ""} | ${item.date || ""}`;
+    const linkOk = isValidUrl(item.minio_link);
+
+    const layerName = normalizeLayerName(item);
+    const wmsUrl = normalizeWmsUrl(item);
+    const status = (layerName && wmsUrl) ? "" : `<div class="sub" style="color:#fbbf24;">layer/wms: -</div>`;
+
+    return `
+      <div class="item" data-id="${item.id}">
+        <div class="meta">
+          <div class="name">${name}</div>
+          <div class="sub">${sub}</div>
+          <div class="sub">${linkOk ? item.minio_link : "about:blank"}</div>
+          ${status}
+        </div>
+        ${eyeBtn(on)}
+      </div>
+    `;
+  }
+
+  function attachSatHandlers(container, items){
     container.querySelectorAll(".item .icon-btn").forEach(btn=>{
-      btn.addEventListener("click", (e)=>{
+      btn.addEventListener("click", async (e)=>{
+        const y = saveScroll();
+
         const itemEl = e.target.closest(".item");
         const id = Number(itemEl.getAttribute("data-id"));
-        const current = satState.get(id) ?? false;
-        satState.set(id, !current);
-        loadSatList();
+        const item = items.find(x=> x.id === id);
+        const current = satOn.get(id) ?? false;
+        const next = !current;
+
+        const ok = await toggleOverlayWithAOI(item, next);
+        if(ok){
+          satOn.set(id, next);
+          await loadSatList();
+        }
+        restoreScroll(y);
       });
     });
   }
 
+  function attachIdxHandlers(container, items){
+    container.querySelectorAll(".item .icon-btn").forEach(btn=>{
+      btn.addEventListener("click", async (e)=>{
+        const y = saveScroll();
+
+        const itemEl = e.target.closest(".item");
+        const id = Number(itemEl.getAttribute("data-id"));
+        const item = items.find(x=> x.id === id);
+        const current = idxOn.get(id) ?? false;
+        const next = !current;
+
+        const ok = await toggleOverlayWithAOI(item, next);
+        if(ok){
+          idxOn.set(id, next);
+          await loadIdxList();
+        }
+        restoreScroll(y);
+      });
+    });
+  }
+
+  // -----------------------------
+  // Satellite list
+  // -----------------------------
   async function loadSatList(){
-    const satellite_name = document.getElementById("satellite_name")?.value || "";
+    const y = saveScroll();
+
+    const satelliteSel = document.getElementById("satellite_name")?.value || "";
     const date_from = document.getElementById("date_from")?.value || "";
     const date_to = document.getElementById("date_to")?.value || "";
 
     const qs = new URLSearchParams();
-    if(satellite_name) qs.set("satellite_name", satellite_name);
     if(date_from) qs.set("date_from", date_from);
     if(date_to) qs.set("date_to", date_to);
 
     const box = document.getElementById("sat-list");
-    if(!box) return;
     box.innerHTML = "";
 
     try{
       const res = await apiFetch(`${API_BASE}/satellite-images/?${qs.toString()}`);
       const data = await res.json();
-      const items = (data.results || []);
-      box.innerHTML = items.map(renderSatItem).join("");
-      attachSatHandlers(box);
+      const raw = (data?.results ?? data ?? []);
+
+      const items = raw
+        .filter(isPublishedItem)
+        .filter(x => matchesSatellite(x, satelliteSel));
+
+      const html = items.map(renderSatItem).filter(Boolean).join("");
+      box.innerHTML = html || `<div class="help">موردی یافت نشد.</div>`;
+      attachSatHandlers(box, items);
     }catch(e){
       console.error(e);
       box.innerHTML = `<div class="help">خطا در دریافت لیست</div>`;
     }
+
+    restoreScroll(y);
   }
+
   document.getElementById("btn-load-sat").addEventListener("click", loadSatList);
 
-  // ---------------------------
-  // Index list (metadata)
-  // ---------------------------
-  const idxState = new Map();
-
-  function renderIdxItem(item){
-    const on = idxState.get(item.id) ?? false;
-    const name = item.title || "Unnamed";
-    const sub = `${item.index_name || ""} | ${item.satellite_name || ""} | ${item.date || ""}`;
-    const linkOk = isValidUrl(item.minio_link);
-
-    return `
-      <div class="item" data-id="${item.id}">
-        <div class="meta">
-          <div class="name">${name}</div>
-          <div class="sub">${sub}</div>
-          <div class="sub">${linkOk ? item.minio_link : "لینک نامعتبر"}</div>
-        </div>
-        ${eyeBtn(on)}
-      </div>
-    `;
-  }
-
-  function attachIdxHandlers(container){
-    container.querySelectorAll(".item .icon-btn").forEach(btn=>{
-      btn.addEventListener("click", (e)=>{
-        const itemEl = e.target.closest(".item");
-        const id = Number(itemEl.getAttribute("data-id"));
-        const current = idxState.get(id) ?? false;
-        idxState.set(id, !current);
-        loadIdxList();
-      });
-    });
-  }
-
+  // -----------------------------
+  // Index list (✅ تاریخ حذف شد)
+  // -----------------------------
   async function loadIdxList(){
-    const index_name = document.getElementById("index_name")?.value || "";
-    const satellite_name = document.getElementById("index_satellite")?.value || "";
-    const date = document.getElementById("index_date")?.value || "";
+    const y = saveScroll();
 
-    const qs = new URLSearchParams();
-    if(index_name) qs.set("index_name", index_name);
-    if(satellite_name) qs.set("satellite_name", satellite_name);
-    if(date) qs.set("date", date);
+    const indexSel = document.getElementById("index_name")?.value || "";
+    const satSel = document.getElementById("index_satellite")?.value || "";
+
+    const qs = new URLSearchParams(); // تاریخ عمداً حذف شد
 
     const box = document.getElementById("idx-list");
-    if(!box) return;
     box.innerHTML = "";
 
     try{
       const res = await apiFetch(`${API_BASE}/index-layers/?${qs.toString()}`);
       const data = await res.json();
-      const items = (data.results || []);
-      box.innerHTML = items.map(renderIdxItem).join("");
-      attachIdxHandlers(box);
+      const raw = (data?.results ?? data ?? []);
+
+      const items = raw
+        .filter(isPublishedItem)
+        .filter(x => matchesIndexName(x, indexSel))
+        .filter(x => matchesSatellite(x, satSel));
+
+      const html = items.map(renderIdxItem).filter(Boolean).join("");
+      box.innerHTML = html || `<div class="help">موردی یافت نشد.</div>`;
+      attachIdxHandlers(box, items);
     }catch(e){
       console.error(e);
       box.innerHTML = `<div class="help">خطا در دریافت لیست</div>`;
     }
+
+    restoreScroll(y);
   }
+
   document.getElementById("btn-load-index").addEventListener("click", loadIdxList);
 
-  cbRisk.checked = true;
+  // First load
+  paintSwatches(activeVecKey());
+  loadSatList();
+  loadIdxList();
 </script>
 {% endblock %}

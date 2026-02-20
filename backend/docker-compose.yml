@@ -1,6 +1,24 @@
+
+
 services:
+  # tileserver:
+  #   image: maptiler/tileserver-gl:latest
+  #   ports:
+  #     - "8080:8080"
+  #   container_name: tileserver
+  #   volumes:
+  #     - ./offline-map/tiles:/data:ro      # اضافه کردن پوشه offline-map به کانتینر
+  #     - ./offline-map/fonts:/fonts:ro      # پوشه فونت‌ها
+  #     - ./offline-map/styles:/styles:ro    # پوشه استایل‌ها
+  #     - ./offline-map/sprites:/sprites     # پوشه اسپریت‌ها
+  #     - ./offline-map/tileserver:/config:ro # تنظیمات
+  #   command: ["--config", "/config/config.json", "--port", "8080"]
+  #   networks:
+  #     - backend
+
   db:
     image: postgis/postgis:16-3.4
+    container_name: db
     restart: always
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -15,22 +33,39 @@ services:
     image: minio/minio:latest
     container_name: minio
     command: ["server", "/data", "--console-address", ":9001"]
+    restart: always
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
-      - "${MINIO_PORT}:9000"
-      - "${MINIO_CONSOLE_PORT}:9001"
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - ./minio_data:/data
+    networks:
+      - backend
+
+  geoserver:
+    image: kartoza/geoserver:2.24.0
+    container_name: geoserver
+    restart: always
+    environment:
+      GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER:-admin}
+      GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD:-geoserver}
+      JAVA_OPTS: "-Xms1g -Xmx2g"
+    ports:
+      - "${GEOSERVER_PORT:-8084}:8080"
+    volumes:
+      - geoserver_data:/opt/geoserver/data_dir
+    depends_on:
+      - db
     networks:
       - backend
 
   web:
     build: .
     container_name: web
-    ports:
-      - "${WEB_PORT}:8000"
+    restart: always
     volumes:
       - .:/app
       - ./media:/app/media
@@ -41,6 +76,8 @@ services:
     depends_on:
       - db
       - minio
+      - geoserver
+
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/ >/dev/null || exit 1"]
       interval: 5s
@@ -52,8 +89,9 @@ services:
   nginx:
     image: nginx:latest
     container_name: nginx
+    restart: always
     ports:
-      - "${NGINX_PORT}:80"
+      - "${NGINX_PORT:-80}:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ./staticfiles:/staticfiles
@@ -62,21 +100,10 @@ services:
       - web
     networks:
       - backend
-# geoserver:
-#     image: kartoza/geoserver:2.24.0
-#     container_name: geoserver
-    # env_file:
-    #   - .env
-#     ports:
-#       - "${GEOSERVER_PORT:-8084}:8080"
-#     volumes:
 
-#     networks:
-#       - search_net
-#     depends_on:
-#       - postgis
 volumes:
   postgis_data:
+  geoserver_data:
 
 networks:
   backend:

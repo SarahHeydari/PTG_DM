@@ -28,4 +28,5 @@ def admin_profile(request):
     return render(request, "frontend/admin_profile.html")
 
 
-
+def upload_test_page(request):
+    return render(request, "frontend/upload_test.html")

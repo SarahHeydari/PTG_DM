@@ -10,4 +10,6 @@ urlpatterns = [
     path("profile/manager/", manager_profile, name="manager_profile"),
     path("profile/expert/", expert_profile, name="expert_profile"),
     path("profile/admin/", admin_profile, name="admin_profile"),
-]
+    path("upload-test/", upload_test_page, name="upload-test"),
+    
+    ]
