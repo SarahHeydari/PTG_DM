@@ -141,3 +141,92 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+import os
+
+# 2-3 line explanation:
+# We read MinIO/GeoServer settings from environment variables injected by docker-compose (.env/env_file).
+# This block supports BOTH legacy env names (GEOSERVER_INTERNAL_BASE_URL, GEOSERVER_USER, ...)
+# and newer aliases (GEOSERVER_BASE_URL_INTERNAL, GEOSERVER_ADMIN_USER, ...), without duplicate overrides.
+
+def _env(*keys, default=None):
+    for k in keys:
+        v = os.getenv(k)
+        if v is not None and str(v).strip() != "":
+            return str(v).strip()
+    return default
+
+
+# -------------------------
+# MinIO Settings (browser/public vs docker/internal)
+# -------------------------
+
+# Browser/public base URL (what frontend/browser can reach)
+MINIO_PUBLIC_BASE_URL = _env(
+    "MINIO_PUBLIC_BASE_URL",
+    default="http://localhost:9000",
+)
+
+# Internal base URL (what containers can reach)
+MINIO_INTERNAL_BASE_URL = _env(
+    "MINIO_INTERNAL_BASE_URL",
+    default="http://minio:9000",
+)
+
+# Optional split form (used by your _minio_internal_url helper)
+MINIO_INTERNAL_HOST = _env(
+    "MINIO_INTERNAL_HOST",
+    default="minio",
+)
+MINIO_INTERNAL_PORT = _env(
+    "MINIO_INTERNAL_PORT",
+    "MINIO_PORT",
+    default="9000",
+)
+
+# MinIO client creds/settings (used by MinioManager)
+MINIO_ENDPOINT = _env("MINIO_ENDPOINT", default="minio:9000")
+MINIO_SECURE = _env("MINIO_SECURE", default="false").lower() == "true"
+MINIO_ACCESS_KEY = _env("MINIO_ACCESS_KEY", "MINIO_ROOT_USER", default="")
+MINIO_SECRET_KEY = _env("MINIO_SECRET_KEY", "MINIO_ROOT_PASSWORD", default="")
+
+# Optional legacy/default bucket
+MINIO_BUCKET_NAME_FIRE = _env("MINIO_BUCKET_NAME_FIRE", default="fire")
+
+
+# -------------------------
+# GeoServer Settings (REST internal vs browser/public)
+# -------------------------
+
+# Internal URL for REST calls inside docker (web -> geoserver)
+GEOSERVER_BASE_URL_INTERNAL = _env(
+    "GEOSERVER_BASE_URL_INTERNAL",
+    "GEOSERVER_INTERNAL_BASE_URL",
+    default="http://geoserver:8080/geoserver",
+)
+
+
+GEOSERVER_BASE_URL_INTERNAL = os.getenv("GEOSERVER_INTERNAL_BASE_URL", "http://geoserver:8080/geoserver")
+GEOSERVER_BASE_URL_PUBLIC   = os.getenv("GEOSERVER_PUBLIC_BASE_URL", "http://localhost:8084/geoserver")
+
+# Public URL for browser access (WMS/WMTS URLs returned by API)
+GEOSERVER_BASE_URL_PUBLIC = _env(
+    "GEOSERVER_BASE_URL_PUBLIC",
+    "GEOSERVER_BASE_URL",
+    "GEOSERVER_PUBLIC_BASE_URL",
+    default="http://localhost:8084/geoserver",
+)
+
+# Admin creds
+GEOSERVER_ADMIN_USER = _env(
+    "GEOSERVER_ADMIN_USER",
+    "GEOSERVER_USER",
+    default="admin",
+)
+GEOSERVER_ADMIN_PASSWORD = _env(
+    "GEOSERVER_ADMIN_PASSWORD",
+    "GEOSERVER_PASSWORD",
+    default="geoserver",
+)
+
+# Workspace
+GEOSERVER_WORKSPACE = _env("GEOSERVER_WORKSPACE", default="fire")

@@ -1,6 +1,5 @@
 # fire/views.py
 import json
-import io
 import os
 import re
 import uuid
@@ -8,6 +7,7 @@ import uuid
 from django.db import connection
 from django.utils.dateparse import parse_datetime, parse_date
 from django.contrib.gis.geos import GEOSGeometry
+from django.conf import settings
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -17,6 +17,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 
 from .models import AOI, SatelliteImage, IndexLayer
 from .utils.minio_manager import MinioManager
+from .utils.geoserver import GeoServerManager
 
 
 def feature_collection_from_sql(sql, params=None):
@@ -46,11 +47,42 @@ def _slug(s: str) -> str:
 
 
 def _safe_object_name(prefix: str, original_name: str) -> str:
-    # keep extension if present
     _, ext = os.path.splitext(original_name or "")
     ext = (ext or "").lower()
     return f"{prefix}/{uuid.uuid4().hex}{ext}"
 
+
+def _geoserver_cfg():
+    """
+    Internal base is used ONLY for server-to-server (web->geoserver) REST calls.
+    """
+    base_url_internal = getattr(settings, "GEOSERVER_BASE_URL_INTERNAL", None)
+    user = getattr(settings, "GEOSERVER_ADMIN_USER", None)
+    pwd = getattr(settings, "GEOSERVER_ADMIN_PASSWORD", None)
+    ws = getattr(settings, "GEOSERVER_WORKSPACE", "fire")
+    return base_url_internal, user, pwd, ws
+
+
+def _geoserver_public_base():
+    """
+    Public base is used for URLs that the browser must reach (host->geoserver mapped port).
+    """
+    return (
+        getattr(settings, "GEOSERVER_BASE_URL_PUBLIC", None)
+        or getattr(settings, "GEOSERVER_BASE_URL", None)
+        or "http://localhost:8084/geoserver"
+    )
+
+
+def _minio_internal_url(bucket: str, object_name: str) -> str:
+    host = getattr(settings, "MINIO_INTERNAL_HOST", "minio")
+    port = getattr(settings, "MINIO_INTERNAL_PORT", "9000")
+    return f"http://{host}:{port}/{bucket}/{object_name}"
+
+
+# =========================
+# GeoJSON APIs (unchanged)
+# =========================
 
 class CountiesGeoJSONAPIView(APIView):
     authentication_classes = []
@@ -194,6 +226,12 @@ class SatelliteImagesAPIView(APIView):
                 "date_time": obj.date_time,
                 "image_name": obj.image_name,
                 "minio_link": obj.minio_link,
+                "geoserver_layer": getattr(obj, "geoserver_layer", None),
+                "wms_url": getattr(obj, "wms_url", None),
+                "wmts_url": getattr(obj, "wmts_url", None),
+                "is_published": obj.is_published,
+                "status": obj.status,
+                "error_message": getattr(obj, "error_message", None),
             })
 
         return Response({"results": results})
@@ -231,26 +269,22 @@ class IndexLayersAPIView(APIView):
                 "satellite_name": obj.satellite_name,
                 "date": obj.date,
                 "minio_link": obj.minio_link,
+                "geoserver_layer": getattr(obj, "geoserver_layer", None),
+                "wms_url": getattr(obj, "wms_url", None),
+                "wmts_url": getattr(obj, "wmts_url", None),
+                "is_published": obj.is_published,
+                "status": obj.status,
+                "error_message": getattr(obj, "error_message", None),
             })
 
         return Response({"results": results})
 
 
 # ==========================================================
-# NEW: Upload APIs (MinIO + DB only) — appended, no change to existing APIs
+# Upload APIs (MinIO + DB + GeoServer publish)
 # ==========================================================
 
 class UploadSatelliteImageAPIView(APIView):
-    """
-    Upload a satellite raster (GeoTIFF) to MinIO and save metadata to DB.
-
-    multipart/form-data:
-      - file: required
-      - satellite_name: required
-      - date_time: required (ISO datetime)
-      - image_name: optional
-      - geometry: optional GeoJSON Polygon (stringified JSON or dict)
-    """
     parser_classes = (MultiPartParser, FormParser)
     authentication_classes = []
     permission_classes = [AllowAny]
@@ -277,10 +311,7 @@ class UploadSatelliteImageAPIView(APIView):
         geos = None
         if geometry:
             try:
-                if isinstance(geometry, str):
-                    geometry_obj = json.loads(geometry)
-                else:
-                    geometry_obj = geometry
+                geometry_obj = json.loads(geometry) if isinstance(geometry, str) else geometry
                 geos = GEOSGeometry(json.dumps(geometry_obj), srid=4326)
                 if geos.geom_type != "Polygon":
                     return Response({"detail": "Only Polygon geometry is allowed."},
@@ -293,7 +324,7 @@ class UploadSatelliteImageAPIView(APIView):
         object_name = _safe_object_name("satellite", f.name)
 
         content = f.read()
-        minio_url = mm.upload_satellite(
+        minio_url_public = mm.upload_satellite(
             satellite_name=satellite_name,
             file_name=object_name,
             content=content
@@ -305,13 +336,63 @@ class UploadSatelliteImageAPIView(APIView):
             satellite_name=satellite_name,
             date_time=dt,
             image_name=image_name,
-            minio_link=minio_url,
+            minio_link=minio_url_public,
             geometry=geos,
             minio_bucket=bucket,
             minio_object=object_name,
             status="minio_ok",
             is_published=False,
         )
+
+        try:
+            base_url_internal, user, pwd, ws = _geoserver_cfg()
+            if not base_url_internal or not user or not pwd:
+                raise Exception("GeoServer settings missing (GEOSERVER_BASE_URL_INTERNAL / GEOSERVER_ADMIN_USER / GEOSERVER_ADMIN_PASSWORD).")
+
+            gs = GeoServerManager(base_url=base_url_internal, username=user, password=pwd, workspace=ws)
+
+            minio_url_internal = _minio_internal_url(bucket=bucket, object_name=object_name)
+
+            store_name = f"sat_{_slug(satellite_name)}_{obj.id}"
+            layer_name = f"sat_{_slug(satellite_name)}_{obj.id}"
+
+            # Publish (server-to-server)
+            gs.publish_geotiff_from_minio(
+                minio_internal_url=minio_url_internal,
+                store_name=store_name,
+                layer_name=layer_name,
+            )
+
+            # Save metadata: IMPORTANT => public URLs for UI/browser
+            public_base = _geoserver_public_base()
+
+            obj.geoserver_workspace = ws
+            obj.geoserver_store = store_name
+            obj.geoserver_layer = f"{ws}:{layer_name}"
+            obj.wms_url = f"{public_base}/wms"
+            obj.wmts_url = f"{public_base}/gwc/service/wmts"
+            obj.status = "published"
+            obj.is_published = True
+            obj.error_message = None
+            obj.save(update_fields=[
+                "geoserver_workspace", "geoserver_store", "geoserver_layer",
+                "wms_url", "wmts_url", "status", "is_published", "error_message"
+            ])
+
+        except Exception as e:
+            obj.status = "publish_failed"
+            obj.error_message = str(e)
+            obj.save(update_fields=["status", "error_message"])
+
+            return Response({
+                "detail": "publish_failed",
+                "stage": "geoserver",
+                "error": str(e),
+                "id": obj.id,
+                "minio_link": obj.minio_link,
+                "minio_bucket": obj.minio_bucket,
+                "minio_object": obj.minio_object,
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({
             "id": obj.id,
@@ -323,21 +404,13 @@ class UploadSatelliteImageAPIView(APIView):
             "minio_object": obj.minio_object,
             "status": obj.status,
             "is_published": obj.is_published,
+            "geoserver_layer": obj.geoserver_layer,
+            "wms_url": obj.wms_url,
+            "wmts_url": obj.wmts_url,
         }, status=status.HTTP_201_CREATED)
 
 
 class UploadIndexLayerAPIView(APIView):
-    """
-    Upload an index raster (GeoTIFF) to MinIO and save metadata to DB.
-
-    multipart/form-data:
-      - file: required
-      - title: required
-      - index_name: required (NDVI, NBR, ...)
-      - date: required (YYYY-MM-DD)
-      - satellite_name: required
-      - geometry: optional GeoJSON Polygon (stringified JSON or dict)
-    """
     parser_classes = (MultiPartParser, FormParser)
     authentication_classes = []
     permission_classes = [AllowAny]
@@ -369,10 +442,7 @@ class UploadIndexLayerAPIView(APIView):
         geos = None
         if geometry:
             try:
-                if isinstance(geometry, str):
-                    geometry_obj = json.loads(geometry)
-                else:
-                    geometry_obj = geometry
+                geometry_obj = json.loads(geometry) if isinstance(geometry, str) else geometry
                 geos = GEOSGeometry(json.dumps(geometry_obj), srid=4326)
                 if geos.geom_type != "Polygon":
                     return Response({"detail": "Only Polygon geometry is allowed."},
@@ -385,7 +455,7 @@ class UploadIndexLayerAPIView(APIView):
         object_name = _safe_object_name("index", f.name)
 
         content = f.read()
-        minio_url = mm.upload_index(
+        minio_url_public = mm.upload_index(
             index_name=index_name,
             file_name=object_name,
             content=content
@@ -395,7 +465,7 @@ class UploadIndexLayerAPIView(APIView):
 
         obj = IndexLayer.objects.create(
             title=title,
-            minio_link=minio_url,
+            minio_link=minio_url_public,
             index_name=index_name,
             date=d,
             satellite_name=satellite_name,
@@ -405,6 +475,54 @@ class UploadIndexLayerAPIView(APIView):
             status="minio_ok",
             is_published=False,
         )
+
+        try:
+            base_url_internal, user, pwd, ws = _geoserver_cfg()
+            if not base_url_internal or not user or not pwd:
+                raise Exception("GeoServer settings missing (GEOSERVER_BASE_URL_INTERNAL / GEOSERVER_ADMIN_USER / GEOSERVER_ADMIN_PASSWORD).")
+
+            gs = GeoServerManager(base_url=base_url_internal, username=user, password=pwd, workspace=ws)
+
+            minio_url_internal = _minio_internal_url(bucket=bucket, object_name=object_name)
+
+            store_name = f"idx_{_slug(index_name)}_{obj.id}"
+            layer_name = f"idx_{_slug(index_name)}_{obj.id}"
+
+            gs.publish_geotiff_from_minio(
+                minio_internal_url=minio_url_internal,
+                store_name=store_name,
+                layer_name=layer_name,
+            )
+
+            public_base = _geoserver_public_base()
+
+            obj.geoserver_workspace = ws
+            obj.geoserver_store = store_name
+            obj.geoserver_layer = f"{ws}:{layer_name}"
+            obj.wms_url = f"{public_base}/wms"
+            obj.wmts_url = f"{public_base}/gwc/service/wmts"
+            obj.status = "published"
+            obj.is_published = True
+            obj.error_message = None
+            obj.save(update_fields=[
+                "geoserver_workspace", "geoserver_store", "geoserver_layer",
+                "wms_url", "wmts_url", "status", "is_published", "error_message"
+            ])
+
+        except Exception as e:
+            obj.status = "publish_failed"
+            obj.error_message = str(e)
+            obj.save(update_fields=["status", "error_message"])
+
+            return Response({
+                "detail": "publish_failed",
+                "stage": "geoserver",
+                "error": str(e),
+                "id": obj.id,
+                "minio_link": obj.minio_link,
+                "minio_bucket": obj.minio_bucket,
+                "minio_object": obj.minio_object,
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({
             "id": obj.id,
@@ -417,4 +535,7 @@ class UploadIndexLayerAPIView(APIView):
             "minio_object": obj.minio_object,
             "status": obj.status,
             "is_published": obj.is_published,
+            "geoserver_layer": obj.geoserver_layer,
+            "wms_url": obj.wms_url,
+            "wmts_url": obj.wmts_url,
         }, status=status.HTTP_201_CREATED)

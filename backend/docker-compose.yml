@@ -15,7 +15,6 @@ services:
   #   command: ["--config", "/config/config.json", "--port", "8080"]
   #   networks:
   #     - backend
-
   db:
     image: postgis/postgis:16-3.4
     container_name: db
@@ -57,8 +56,10 @@ services:
       - "${GEOSERVER_PORT:-8084}:8080"
     volumes:
       - geoserver_data:/opt/geoserver/data_dir
+      - ./minio_data:/opt/minio_data:ro
     depends_on:
       - db
+      - minio
     networks:
       - backend
 
@@ -66,6 +67,8 @@ services:
     build: .
     container_name: web
     restart: always
+    ports:
+      - "${WEB_PORT:-8000}:8000"
     volumes:
       - .:/app
       - ./media:/app/media
@@ -77,7 +80,6 @@ services:
       - db
       - minio
       - geoserver
-
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/ >/dev/null || exit 1"]
       interval: 5s
