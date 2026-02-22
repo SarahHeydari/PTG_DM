@@ -230,3 +230,4 @@ GEOSERVER_ADMIN_PASSWORD = _env(
 
 # Workspace
 GEOSERVER_WORKSPACE = _env("GEOSERVER_WORKSPACE", default="fire")
+GEOSERVER_STYLES_DIR = os.getenv("GEOSERVER_STYLES_DIR", "/app/geoserver_styles/styles")

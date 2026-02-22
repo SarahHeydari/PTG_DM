@@ -3,6 +3,10 @@ import json
 import os
 import re
 import uuid
+import base64
+import urllib.request
+import urllib.error
+import xml.etree.ElementTree as ET
 
 from django.db import connection
 from django.utils.dateparse import parse_datetime, parse_date
@@ -54,12 +58,21 @@ def _safe_object_name(prefix: str, original_name: str) -> str:
 
 def _geoserver_cfg():
     """
-    Internal base is used ONLY for server-to-server (web->geoserver) REST calls.
+    Internal base is used ONLY for server-to-server (web->geoserver) calls.
+    If someone mistakenly sets INTERNAL to localhost, fix it automatically.
     """
     base_url_internal = getattr(settings, "GEOSERVER_BASE_URL_INTERNAL", None)
-    user = getattr(settings, "GEOSERVER_ADMIN_USER", None)
-    pwd = getattr(settings, "GEOSERVER_ADMIN_PASSWORD", None)
-    ws = getattr(settings, "GEOSERVER_WORKSPACE", "fire")
+
+    # اگر internal اشتباهی localhost بود، داخل کانتینر جواب نمی‌دهد
+    if base_url_internal and ("localhost" in base_url_internal or "127.0.0.1" in base_url_internal):
+        base_url_internal = None
+
+    # fallback صحیح داخل شبکه docker
+    base_url_internal = base_url_internal or "http://geoserver:8080/geoserver"
+
+    user = getattr(settings, "GEOSERVER_ADMIN_USER", None) or "admin"
+    pwd = getattr(settings, "GEOSERVER_ADMIN_PASSWORD", None) or "geoserver"
+    ws = getattr(settings, "GEOSERVER_WORKSPACE", "fire") or "fire"
     return base_url_internal, user, pwd, ws
 
 
@@ -356,14 +369,12 @@ class UploadSatelliteImageAPIView(APIView):
             store_name = f"sat_{_slug(satellite_name)}_{obj.id}"
             layer_name = f"sat_{_slug(satellite_name)}_{obj.id}"
 
-            # Publish (server-to-server)
             gs.publish_geotiff_from_minio(
                 minio_internal_url=minio_url_internal,
                 store_name=store_name,
                 layer_name=layer_name,
             )
 
-            # Save metadata: IMPORTANT => public URLs for UI/browser
             public_base = _geoserver_public_base()
 
             obj.geoserver_workspace = ws
@@ -539,3 +550,111 @@ class UploadIndexLayerAPIView(APIView):
             "wms_url": obj.wms_url,
             "wmts_url": obj.wmts_url,
         }, status=status.HTTP_201_CREATED)
+
+# ==========================================================
+# Style Legend API (Data-driven from GeoServer SLD)
+# GET /api/fire/styles/<style_name>/legend/
+# ==========================================================
+def _dedupe_colormap(colormap):
+    out = []
+    seen = set()
+
+    for item in colormap or []:
+        key = (
+            item.get("quantity"),
+            (item.get("color") or "").lower(),
+            item.get("opacity"),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(item)
+
+    return out
+
+
+def _http_get(url: str, username: str, password: str, timeout: int = 10) -> bytes:
+    token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
+    req = urllib.request.Request(url, headers={"Authorization": f"Basic {token}"})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return resp.read()
+
+
+def _parse_sld_colormap(sld_xml: bytes):
+    try:
+        root = ET.fromstring(sld_xml)
+    except Exception:
+        return None, "Invalid SLD XML"
+
+    entries = []
+    for el in root.iter():
+        if el.tag.lower().endswith("colormapentry"):
+            q = el.attrib.get("quantity")
+            color = el.attrib.get("color")
+            label = el.attrib.get("label")
+            opacity = el.attrib.get("opacity")
+            entries.append({
+                "quantity": float(q) if q not in (None, "") else None,
+                "color": color,
+                "label": label,
+                "opacity": float(opacity) if opacity not in (None, "") else None,
+            })
+
+    if not entries:
+        return [], None
+
+    sortable = [e for e in entries if e["quantity"] is not None]
+    nonsort = [e for e in entries if e["quantity"] is None]
+    sortable.sort(key=lambda x: x["quantity"])
+
+    merged = sortable + nonsort
+    merged = _dedupe_colormap(merged)
+
+    return merged, None
+
+
+class StyleLegendAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    def get(self, request, style_name: str):
+        style_name = (style_name or "").strip()
+        if not style_name:
+            return Response({"detail": "style_name is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        base_url_internal, user, pwd, ws = _geoserver_cfg()
+
+        sld_url = f"{base_url_internal}/rest/workspaces/{ws}/styles/{style_name}.sld"
+
+        try:
+            sld_xml = _http_get(sld_url, user, pwd)
+        except urllib.error.HTTPError as e:
+            return Response({
+                "detail": "Failed to fetch SLD from GeoServer.",
+                "status_code": e.code,
+                "error": str(e),
+                "url": sld_url,
+            }, status=status.HTTP_502_BAD_GATEWAY)
+        except Exception as e:
+            return Response({
+                "detail": "Failed to fetch SLD from GeoServer.",
+                "error": str(e),
+                "url": sld_url,
+            }, status=status.HTTP_502_BAD_GATEWAY)
+
+        entries, err = _parse_sld_colormap(sld_xml)
+        if err:
+            return Response({
+                "detail": "Failed to parse SLD.",
+                "error": err,
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # extra safety dedupe
+        entries = _dedupe_colormap(entries)
+
+        return Response({
+            "workspace": ws,
+            "style": style_name,
+            "source": "geoserver_sld",
+            "colormap": entries,
+        })

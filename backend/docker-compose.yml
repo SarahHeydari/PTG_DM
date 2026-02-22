@@ -1,5 +1,3 @@
-
-
 services:
   # tileserver:
   #   image: maptiler/tileserver-gl:latest
@@ -7,14 +5,15 @@ services:
   #     - "8080:8080"
   #   container_name: tileserver
   #   volumes:
-  #     - ./offline-map/tiles:/data:ro      # اضافه کردن پوشه offline-map به کانتینر
-  #     - ./offline-map/fonts:/fonts:ro      # پوشه فونت‌ها
-  #     - ./offline-map/styles:/styles:ro    # پوشه استایل‌ها
-  #     - ./offline-map/sprites:/sprites     # پوشه اسپریت‌ها
-  #     - ./offline-map/tileserver:/config:ro # تنظیمات
+  #     - ./offline-map/tiles:/data:ro
+  #     - ./offline-map/fonts:/fonts:ro
+  #     - ./offline-map/styles:/styles:ro
+  #     - ./offline-map/sprites:/sprites
+  #     - ./offline-map/tileserver:/config:ro
   #   command: ["--config", "/config/config.json", "--port", "8080"]
   #   networks:
   #     - backend
+
   db:
     image: postgis/postgis:16-3.4
     container_name: db
@@ -49,7 +48,10 @@ services:
     container_name: geoserver
     restart: always
     environment:
-      GEOSERVER_ADMIN_USER: ${GEOSERVER_ADMIN_USER:-admin}
+      # IMPORTANT:
+      # kartoza/geoserver expects these env names (USERNAME, PASSWORD).
+      # Keep your .env variables, but map them correctly:
+      GEOSERVER_ADMIN_USERNAME: ${GEOSERVER_ADMIN_USER:-admin}
       GEOSERVER_ADMIN_PASSWORD: ${GEOSERVER_ADMIN_PASSWORD:-geoserver}
       JAVA_OPTS: "-Xms1g -Xmx2g"
     ports:
@@ -63,6 +65,32 @@ services:
     networks:
       - backend
 
+  geoserver-styler:
+    image: curlimages/curl:8.5.0
+    container_name: geoserver-styler
+    depends_on:
+      - geoserver
+    volumes:
+      - ./geoserver_styles:/work:ro
+    environment:
+      GS: "http://geoserver:8080/geoserver"
+      GS_USER: "${GEOSERVER_ADMIN_USER:-admin}"
+      GS_PASS: "${GEOSERVER_ADMIN_PASSWORD:-geoserver}"
+      GS_WORKSPACE: "fire"
+    entrypoint: ["/bin/sh","-lc"]
+    command: >
+      "
+      echo 'Waiting for GeoServer...';
+      until curl -sS -u ${GEOSERVER_ADMIN_USER:-admin}:${GEOSERVER_ADMIN_PASSWORD:-geoserver} -f http://geoserver:8080/geoserver/rest/about/version.xml >/dev/null; do
+        sleep 2;
+      done;
+      echo 'GeoServer ready. Applying styles...';
+      /bin/sh /work/scripts/apply_styles.sh;
+      echo 'DONE';
+      "
+    restart: "no"
+    networks:
+      - backend
   web:
     build: .
     container_name: web

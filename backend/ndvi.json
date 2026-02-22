@@ -1,0 +1,11 @@
+{
+  "style":"ndvi",
+  "index":"ndvi",
+  "unit":"index",
+  "items":[
+    {"from":-1.0,"to":0.0,"color":"#8B0000","label":"Very low","meaning":"Bare soil / burned / water"},
+    {"from":0.0,"to":0.3,"color":"#FF0000","label":"Low","meaning":"Sparse vegetation"},
+    {"from":0.3,"to":0.6,"color":"#FFFF00","label":"Moderate","meaning":"Moderate vegetation"},
+    {"from":0.6,"to":1.0,"color":"#00FF00","label":"High","meaning":"Dense healthy vegetation"}
+  ]
+}
